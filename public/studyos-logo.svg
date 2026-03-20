@@ -1,0 +1,18 @@
+<svg width="256" height="64" viewBox="0 0 256 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="studyos-logo-gradient" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6D23F9" />
+      <stop offset="1" stop-color="#8B5CFF" />
+    </linearGradient>
+    <linearGradient id="studyos-text-gradient" x1="68" y1="16" x2="224" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6D23F9" />
+      <stop offset="1" stop-color="#4F46E5" />
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#studyos-logo-gradient)" />
+  <path d="M40 16H24C19.6 16 16 19.6 16 24C16 28.4 19.6 32 24 32H32.5C35.5 32 38 34.5 38 37.5C38 40.5 35.5 43 32.5 43H16" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M24 48H40C44.4 48 48 44.4 48 40C48 35.6 44.4 32 40 32H31.5C28.5 32 26 29.5 26 26.5C26 23.5 28.5 21 31.5 21H48" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+
+  <text x="74" y="41" fill="url(#studyos-text-gradient)" font-family="Space Grotesk, Manrope, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.8">StudyOS</text>
+</svg>

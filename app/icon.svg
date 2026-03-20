@@ -1,0 +1,18 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="icon-grad" x1="24" y1="24" x2="232" y2="232" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6D23F9"/>
+      <stop offset="1" stop-color="#8B5CFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="16" y="16" width="224" height="224" rx="64" fill="url(#icon-grad)"/>
+  <path
+    d="M128 46L143.5 94.5L192 110L143.5 125.5L128 174L112.5 125.5L64 110L112.5 94.5L128 46Z"
+    fill="white"
+  />
+  <path
+    d="M178 146L184.5 166.5L205 173L184.5 179.5L178 200L171.5 179.5L151 173L171.5 166.5L178 146Z"
+    fill="white"
+    fill-opacity="0.88"
+  />
+</svg>
