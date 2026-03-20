@@ -4,9 +4,12 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit, parseJsonArray } from "@/lib/api";
 import { generateContent } from "@/lib/gemini";
 import { FlashcardModel } from "@/models/Flashcard";
+import { scheduleRevisionItem } from "@/lib/revision";
+import { markFeatureUsed } from "@/lib/progress";
 
 const schema = z.object({
-  topic: z.string().min(2)
+  topic: z.string().min(2),
+  subject: z.string().min(2).default("Other")
 });
 
 export async function POST(request: Request) {
@@ -21,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   const response = await generateContent(
-    `Create 15 concise flashcards for ${parsed.data.topic}. Return only JSON array of objects: [{"front":"","back":""}]`
+    `Create 15 concise flashcards for ${parsed.data.topic} in ${parsed.data.subject}. Return only JSON array of objects: [{"front":"","back":""}]`
   );
   const cards = parseJsonArray(response) as { front: string; back: string }[];
 
@@ -29,8 +32,21 @@ export async function POST(request: Request) {
   const deck = await FlashcardModel.create({
     userId: authResult.userId,
     topic: parsed.data.topic,
+    subject: parsed.data.subject,
     cards: cards.map((card) => ({ ...card, difficulty: "medium" }))
   });
+
+  await Promise.allSettled([
+    scheduleRevisionItem({
+      userId: authResult.userId,
+      topic: parsed.data.topic,
+      subject: parsed.data.subject,
+      type: "flashcard",
+      sourceId: deck._id.toString(),
+      sourceTitle: parsed.data.topic
+    }),
+    markFeatureUsed(authResult.userId, "flashcards")
+  ]);
 
   return NextResponse.json({ success: true, deck });
 }

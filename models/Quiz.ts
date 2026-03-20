@@ -36,6 +36,61 @@ const QuizSchema = new Schema(
     totalQuestions: { type: Number, required: true },
     completedAt: { type: Date, default: null },
     timeTaken: { type: Number, default: 0 },
+    submittedAnswers: {
+      type: [
+        {
+          questionIndex: { type: Number, required: true },
+          selectedOption: { type: String, enum: ["A", "B", "C", "D"], default: null },
+          selectedText: { type: String, default: "" },
+          isCorrect: { type: Boolean, default: false }
+        }
+      ],
+      default: []
+    },
+    autopsy: {
+      type: {
+        mistakeBreakdown: {
+          type: [
+            {
+              questionIndex: { type: Number, required: true },
+              questionText: { type: String, required: true },
+              studentAnswer: { type: String, required: true },
+              correctAnswer: { type: String, required: true },
+              mistakeType: {
+                type: String,
+                enum: ["misconception", "silly_error", "knowledge_gap", "guessed", "time_pressure"],
+                required: true
+              },
+              explanation: { type: String, required: true }
+            }
+          ],
+          default: []
+        },
+        weakTopics: {
+          type: [
+            {
+              topic: { type: String, required: true },
+              reason: { type: String, required: true },
+              revisionLink: { type: String, default: "" }
+            }
+          ],
+          default: []
+        },
+        strengthTopics: { type: [String], default: [] },
+        overallPattern: { type: String, default: "" },
+        radarData: {
+          type: [
+            {
+              subject: { type: String, required: true },
+              score: { type: Number, required: true }
+            }
+          ],
+          default: []
+        },
+        generatedAt: { type: Date, default: null }
+      },
+      default: null
+    },
     generationMeta: { type: GenerationMetaSchema, default: null }
   },
   { timestamps: { createdAt: true, updatedAt: false } }

@@ -41,3 +41,17 @@ export async function uploadNoteVisualImage({
     resource_type: "image"
   });
 }
+
+export async function uploadStudyImage(base64Image: string, folder = "studyos/scans") {
+  return cloudinary.uploader.upload(base64Image, {
+    folder,
+    resource_type: "image"
+  });
+}
+
+export async function uploadStudyFile(filePath: string, folder = "studyos/past-papers") {
+  return cloudinary.uploader.upload(filePath, {
+    folder,
+    resource_type: "raw"
+  });
+}

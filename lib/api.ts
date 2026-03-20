@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { enforceRateLimit } from "@/lib/ratelimit";
+import { enforceRateLimit, type RateLimitPolicy } from "@/lib/ratelimit";
 
 export async function requireUser() {
   const session = await auth();
@@ -10,8 +10,8 @@ export async function requireUser() {
   return { userId: session.user.id, session };
 }
 
-export async function applyRouteRateLimit(identifier: string) {
-  const result = await enforceRateLimit(identifier);
+export async function applyRouteRateLimit(identifier: string, policy: RateLimitPolicy = "default") {
+  const result = await enforceRateLimit(identifier, policy);
   if (!result.success) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
   }
@@ -34,4 +34,13 @@ export function parseJsonArray(input: string) {
     throw new Error("JSON array not found in model response");
   }
   return JSON.parse(input.slice(first, last + 1));
+}
+
+export function buildUnauthorizedResponse() {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+export function routeError(routeName: string, error: unknown, status = 500) {
+  console.error(`[${routeName}]`, error);
+  return NextResponse.json({ error: "Something went wrong. Please try again." }, { status });
 }

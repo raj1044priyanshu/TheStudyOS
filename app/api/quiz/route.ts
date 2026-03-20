@@ -6,6 +6,8 @@ import { generateContentWithMetadata } from "@/lib/gemini";
 import { quizAnswerSchema, validateGeneratedQuiz, type QuizAnswer } from "@/lib/quiz-content";
 import { QuizModel } from "@/models/Quiz";
 import { logActivity } from "@/lib/progress";
+import { scheduleRevisionItem } from "@/lib/revision";
+import { upsertConceptNode, updateConceptConfidence } from "@/lib/knowledge-graph";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
 
@@ -188,10 +190,28 @@ export async function PATCH(request: Request) {
     0
   );
   const percent = quiz.questions.length === 0 ? 0 : Math.round((correctCount / quiz.questions.length) * 100);
+  const submittedAnswers = quiz.questions.map(
+    (
+      question: {
+        correct: QuizAnswer;
+        options: Record<QuizAnswer, string>;
+      },
+      index: number
+    ) => {
+      const selectedOption = normalizedAnswers[index];
+      return {
+        questionIndex: index,
+        selectedOption,
+        selectedText: selectedOption ? question.options[selectedOption] : "",
+        isCorrect: selectedOption === question.correct
+      };
+    }
+  );
 
   quiz.score = percent;
   quiz.timeTaken = parsed.data.timeTaken;
   quiz.completedAt = new Date();
+  quiz.submittedAnswers = submittedAnswers;
   await quiz.save();
 
   const events = await logActivity({
@@ -201,6 +221,26 @@ export async function PATCH(request: Request) {
     quizScore: percent,
     minutesStudied: parsed.data.timeTaken
   });
+
+  await Promise.allSettled([
+    scheduleRevisionItem({
+      userId: authResult.userId,
+      topic: quiz.topic,
+      subject: quiz.subject,
+      type: "quiz",
+      sourceId: quiz._id.toString(),
+      sourceTitle: `${quiz.subject}: ${quiz.topic}`
+    }),
+    upsertConceptNode({
+      userId: authResult.userId,
+      conceptName: quiz.topic,
+      subject: quiz.subject,
+      sourceId: quiz._id.toString(),
+      sourceType: "quiz",
+      sourceTitle: quiz.topic
+    }),
+    updateConceptConfidence(authResult.userId, quiz.subject, percent)
+  ]);
 
   if (events.newAchievements.length) {
     await createAchievementNotifications(authResult.userId, events.newAchievements).catch((error) => {
@@ -263,6 +303,7 @@ export async function PATCH(request: Request) {
       correctCount,
       totalQuestions: quiz.questions.length,
       percent
-    }
+    },
+    autopsyAvailable: percent < 100
   });
 }

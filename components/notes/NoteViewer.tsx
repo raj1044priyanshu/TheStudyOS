@@ -14,6 +14,7 @@ import {
   IconZoomOut
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
+import { SimplifierSlider } from "@/components/notes/SimplifierSlider";
 import { cn } from "@/lib/utils";
 import { SUBJECT_COLORS } from "@/lib/constants";
 import { analyzeNoteContent, extractNoteDiagramPlaceholders, NOTE_BLOCK_TAGS } from "@/lib/note-content";
@@ -256,73 +257,74 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
   let diagramOrdinal = -1;
 
   return (
-    <div
-      className={cn(
-        "space-y-5 pb-6",
-        isMobile && "fixed inset-0 z-[70] overflow-y-auto bg-[linear-gradient(180deg,var(--background-strong)_0%,var(--background)_100%)] p-2 sm:p-4"
-      )}
-    >
-      {analysis.status !== "pass" ? (
-        <div className={cn("no-print mx-auto max-w-[960px] rounded-[24px] border px-4 py-3 text-sm leading-6 shadow-[var(--panel-shadow)]", noteWarningTone)}>
-          <p className="font-semibold">
-            {analysis.status === "fail"
-              ? "This note did not meet our quality checks and should be treated as a draft."
-              : "This note is readable, but parts of it were weakly structured."}
-          </p>
-          <p className="text-xs leading-5 opacity-90">
-            Review key facts carefully before relying on it. {analysis.issues[0] ?? "Some sections did not meet the current note validation rules."}
-          </p>
-        </div>
-      ) : null}
-
+    <>
       <div
         className={cn(
-          "glass-nav no-print z-10 overflow-x-auto rounded-full border border-[color:var(--panel-border)] p-2 shadow-[var(--panel-shadow)] backdrop-blur-[20px]",
-          isMobile ? "fixed bottom-3 left-3 right-3" : "sticky top-4 mx-auto w-fit"
+          "space-y-5 pb-6",
+          isMobile && "fixed inset-0 z-[70] overflow-y-auto bg-[linear-gradient(180deg,var(--background-strong)_0%,var(--background)_100%)] p-2 sm:p-4"
         )}
       >
-        <div className="flex w-max items-center gap-2">
-          {isMobile ? (
-            <Button size="sm" variant="outline" onClick={backFromReader}>
-              <IconArrowLeft className="mr-1 h-3.5 w-3.5" />
-              Back
-            </Button>
-          ) : null}
-          <Button size="sm" onClick={exportPdf}>
-            <IconFileDownload className="mr-1 h-3.5 w-3.5" />
-            PDF Export
-          </Button>
-          {!isMobile ? (
-            <>
-              <Button size="sm" variant="outline" onClick={() => setZoom((value) => Math.min(1.4, Number((value + 0.1).toFixed(2))))}>
-                <IconZoomIn className="mr-1 h-3.5 w-3.5" />
-                Zoom In
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setZoom((value) => Math.max(0.9, Number((value - 0.1).toFixed(2))))}>
-                <IconZoomOut className="mr-1 h-3.5 w-3.5" />
-                Zoom Out
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => window.print()}>
-                <IconPrinter className="mr-1 h-3.5 w-3.5" />
-                Print
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </div>
+        {analysis.status !== "pass" ? (
+          <div className={cn("no-print mx-auto max-w-[960px] rounded-[24px] border px-4 py-3 text-sm leading-6 shadow-[var(--panel-shadow)]", noteWarningTone)}>
+            <p className="font-semibold">
+              {analysis.status === "fail"
+                ? "This note did not meet our quality checks and should be treated as a draft."
+                : "This note is readable, but parts of it were weakly structured."}
+            </p>
+            <p className="text-xs leading-5 opacity-90">
+              Review key facts carefully before relying on it. {analysis.issues[0] ?? "Some sections did not meet the current note validation rules."}
+            </p>
+          </div>
+        ) : null}
 
-      <div className="overflow-x-hidden pb-20 md:pb-5">
         <div
           className={cn(
-            "mx-auto origin-top transition-transform duration-200",
-            isMobile ? "w-full max-w-[980px] px-1 pt-2 sm:px-4 sm:pt-3" : "w-[min(900px,calc(100vw-1.5rem))] sm:w-[min(900px,calc(100vw-3rem))]"
+            "glass-nav no-print z-10 overflow-x-auto rounded-full border border-[color:var(--panel-border)] p-2 shadow-[var(--panel-shadow)] backdrop-blur-[20px]",
+            isMobile ? "fixed bottom-3 left-3 right-3" : "sticky top-4 mx-auto w-fit"
           )}
-          style={{ transform: `scale(${effectiveZoom})` }}
         >
+          <div className="flex w-max items-center gap-2">
+            {isMobile ? (
+              <Button size="sm" variant="outline" onClick={backFromReader}>
+                <IconArrowLeft className="mr-1 h-3.5 w-3.5" />
+                Back
+              </Button>
+            ) : null}
+            <Button size="sm" onClick={exportPdf}>
+              <IconFileDownload className="mr-1 h-3.5 w-3.5" />
+              PDF Export
+            </Button>
+            {!isMobile ? (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setZoom((value) => Math.min(1.4, Number((value + 0.1).toFixed(2))))}>
+                  <IconZoomIn className="mr-1 h-3.5 w-3.5" />
+                  Zoom In
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setZoom((value) => Math.max(0.9, Number((value - 0.1).toFixed(2))))}>
+                  <IconZoomOut className="mr-1 h-3.5 w-3.5" />
+                  Zoom Out
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => window.print()}>
+                  <IconPrinter className="mr-1 h-3.5 w-3.5" />
+                  Print
+                </Button>
+              </>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="overflow-x-hidden pb-20 md:pb-5">
           <div
-            ref={paperRef}
-            className="note-surface relative min-h-[calc(100dvh-7rem)] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] px-4 pb-8 pt-6 sm:min-h-[1123px] sm:px-10 sm:pb-12 sm:pt-10"
+            className={cn(
+              "mx-auto origin-top transition-transform duration-200",
+              isMobile ? "w-full max-w-[980px] px-1 pt-2 sm:px-4 sm:pt-3" : "w-[min(900px,calc(100vw-1.5rem))] sm:w-[min(900px,calc(100vw-3rem))]"
+            )}
+            style={{ transform: `scale(${effectiveZoom})` }}
           >
+            <div
+              ref={paperRef}
+              className="note-surface relative min-h-[calc(100dvh-7rem)] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] px-4 pb-8 pt-6 sm:min-h-[1123px] sm:px-10 sm:pb-12 sm:pt-10"
+            >
             <header className="relative z-[1] mb-8 border-b border-[color:var(--note-border)] pb-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span className={cn("rounded-full px-3 py-1 text-xs font-medium", SUBJECT_COLORS[displaySubject] ?? SUBJECT_COLORS.Other)}>
@@ -457,9 +459,11 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                 return <p key={idx}>{renderInlineHighlights(block.value ?? "")}</p>;
               })}
             </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <SimplifierSlider noteId={noteId} subject={displaySubject} topic={displayTitle} />
+    </>
   );
 }

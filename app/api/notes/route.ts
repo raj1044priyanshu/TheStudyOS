@@ -7,6 +7,9 @@ import { generateContentWithMetadata } from "@/lib/gemini";
 import { analyzeNoteContent } from "@/lib/note-content";
 import { NoteModel } from "@/models/Note";
 import { logActivity } from "@/lib/progress";
+import { extractFormulasFromNote, upsertFormulaEntry } from "@/lib/formula-sheet";
+import { scheduleRevisionItem } from "@/lib/revision";
+import { upsertConceptNode } from "@/lib/knowledge-graph";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
 
@@ -204,6 +207,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const authResult = await requireUser();
   if (authResult.error) {
     return authResult.error;
@@ -240,8 +244,38 @@ export async function POST(request: Request) {
       userId: authResult.userId,
       subject,
       type: "note",
-      notesGenerated: 1
+      notesGenerated: 1,
+      durationSeconds: Math.round((Date.now() - startedAt) / 1000)
     });
+
+    const formulas = extractFormulasFromNote(generated.content);
+    await Promise.allSettled([
+      scheduleRevisionItem({
+        userId: authResult.userId,
+        topic,
+        subject,
+        type: "note",
+        sourceId: note._id.toString(),
+        sourceTitle: note.title
+      }),
+      upsertConceptNode({
+        userId: authResult.userId,
+        conceptName: topic,
+        subject,
+        sourceId: note._id.toString(),
+        sourceType: "note",
+        sourceTitle: note.title
+      }),
+      ...formulas.map((formulaText) =>
+        upsertFormulaEntry({
+          userId: authResult.userId,
+          subject,
+          formulaText,
+          noteId: note._id.toString(),
+          noteTitle: note.title
+        })
+      )
+    ]);
 
     if (events.newAchievements.length) {
       await createAchievementNotifications(authResult.userId, events.newAchievements).catch((error) => {

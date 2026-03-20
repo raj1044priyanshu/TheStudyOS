@@ -6,6 +6,7 @@ import { IconArrowRight, IconCalendarStats, IconCircleCheckFilled, IconClockHour
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { DailyBrief } from "@/components/dashboard/DailyBrief";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
 
 interface DashboardPayload {
@@ -126,6 +127,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <DailyBrief />
       {streakAlertOpen && data.streakBreakAlert ? (
         <div className="fixed inset-0 z-[79] flex items-center justify-center bg-[rgba(28,27,41,0.25)] p-4 backdrop-blur-sm">
           <div className="glass-modal w-full max-w-md p-6 text-center">

@@ -12,7 +12,10 @@ import { GlobalSearch } from "@/components/layout/GlobalSearch";
 interface Props {
   streak: number;
   level: number;
+  levelName: string;
+  levelIcon: string;
   xp: number;
+  progressToNextLevel: number;
   user: {
     name?: string | null;
     image?: string | null;
@@ -28,6 +31,16 @@ function getPageTitle(pathname: string) {
   if (pathname === "/quiz") return "Quiz";
   if (pathname.startsWith("/quiz/")) return "Quiz Session";
   if (pathname === "/flashcards") return "Flashcards";
+  if (pathname === "/focus") return "Focus Room";
+  if (pathname === "/scanner") return "Scanner";
+  if (pathname === "/knowledge-graph") return "Knowledge Graph";
+  if (pathname === "/formula-sheet") return "Formula Sheet";
+  if (pathname === "/exams") return "Exams";
+  if (pathname === "/teach-me") return "Teach Me";
+  if (pathname === "/revision") return "Revision";
+  if (pathname === "/study-room") return "Study Room";
+  if (pathname === "/evaluator") return "Evaluator";
+  if (pathname === "/past-papers") return "Past Papers";
   if (pathname === "/mindmap") return "Mind Map";
   if (pathname === "/progress") return "Progress";
   if (pathname === "/videos") return "Videos";
@@ -41,11 +54,21 @@ function getPageEyebrow(pathname: string) {
   if (pathname.startsWith("/quiz")) return "Assessment";
   if (pathname === "/planner") return "Planning";
   if (pathname === "/doubts") return "Assistant";
+  if (pathname === "/focus") return "Focus";
+  if (pathname === "/scanner") return "Capture";
+  if (pathname === "/knowledge-graph") return "Connections";
+  if (pathname === "/formula-sheet") return "Collection";
+  if (pathname === "/exams") return "Countdown";
+  if (pathname === "/teach-me") return "Feynman";
+  if (pathname === "/revision") return "Spaced Repetition";
+  if (pathname === "/study-room") return "Collaboration";
+  if (pathname === "/evaluator") return "Exam Practice";
+  if (pathname === "/past-papers") return "Analysis";
   if (pathname === "/progress") return "Insights";
   return "StudyOS";
 }
 
-export function Topbar({ streak, level, xp, user }: Props) {
+export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNextLevel, user }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const title = getPageTitle(pathname);
@@ -78,9 +101,11 @@ export function Topbar({ streak, level, xp, user }: Props) {
             <div className="hidden items-center gap-2 xl:flex">
               <Badge className="gap-1.5 normal-case tracking-normal">
                 <IconSparkles className="h-3.5 w-3.5 text-[#7B6CF6]" />
-                {streak} day streak
+                🔥 {streak}
               </Badge>
-              <Badge className="normal-case tracking-normal">Level {level}</Badge>
+              <Badge className="normal-case tracking-normal">
+                {levelIcon} {levelName}
+              </Badge>
               <Badge className="normal-case tracking-normal">{xp} XP</Badge>
             </div>
           ) : null}
@@ -98,11 +123,17 @@ export function Topbar({ streak, level, xp, user }: Props) {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+      <div className="flex items-center gap-2 md:hidden">
           <Link href="/profile">
             <Avatar src={user.image} alt={user.name ?? "Student"} />
           </Link>
         </div>
+      </div>
+      <div className="mx-auto mt-2 h-[5px] max-w-[1320px] overflow-hidden rounded-full bg-[color:var(--surface-low)]">
+        <div
+          className="h-full rounded-full bg-[linear-gradient(90deg,#7B6CF6,#6EE7B7)] transition-[width] duration-300"
+          style={{ width: `${progressToNextLevel}%` }}
+        />
       </div>
     </header>
   );

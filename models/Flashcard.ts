@@ -4,6 +4,7 @@ const FlashcardSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     topic: { type: String, required: true },
+    subject: { type: String, default: "Other" },
     cards: {
       type: [
         {

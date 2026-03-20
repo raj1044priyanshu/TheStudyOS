@@ -1,6 +1,12 @@
+"use client";
+
+import { useState } from "react";
 import { ChatInterface } from "@/components/doubts/ChatInterface";
+import { VoiceDoubts } from "@/components/doubts/VoiceDoubts";
 
 export default function DoubtsPage() {
+  const [mode, setMode] = useState<"type" | "voice">("type");
+
   return (
     <div className="space-y-5">
       <div>
@@ -10,7 +16,27 @@ export default function DoubtsPage() {
           Ask anything and get step-by-step explanations in a calmer chat workspace designed for focused problem solving.
         </p>
       </div>
-      <ChatInterface />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => setMode("type")}
+          className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+            mode === "type" ? "border-transparent bg-[#7B6CF6] text-white" : "border-[color:var(--panel-border)] bg-[color:var(--surface-panel)] text-[var(--muted-foreground)]"
+          }`}
+        >
+          ⌨️ Type
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("voice")}
+          className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
+            mode === "voice" ? "border-transparent bg-[#7B6CF6] text-white" : "border-[color:var(--panel-border)] bg-[color:var(--surface-panel)] text-[var(--muted-foreground)]"
+          }`}
+        >
+          🎙 Voice
+        </button>
+      </div>
+      {mode === "type" ? <ChatInterface /> : <VoiceDoubts />}
     </div>
   );
 }

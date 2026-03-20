@@ -5,7 +5,9 @@ import { requireUser, applyRouteRateLimit } from "@/lib/api";
 import { NoteModel } from "@/models/Note";
 
 const patchSchema = z.object({
-  isFavorite: z.boolean().optional()
+  isFavorite: z.boolean().optional(),
+  stickyNoteText: z.string().min(1).optional(),
+  stickyNoteColor: z.enum(["yellow", "pink", "blue"]).optional()
 });
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -32,11 +34,29 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return NextResponse.json({ error: payload.error.flatten() }, { status: 400 });
   }
 
-  const note = await NoteModel.findOneAndUpdate(
-    { _id: params.id, userId: authResult.userId },
-    { $set: payload.data },
-    { new: true }
-  ).lean();
+  const update: Record<string, unknown> = {};
+  if (typeof payload.data.isFavorite === "boolean") {
+    update.isFavorite = payload.data.isFavorite;
+  }
+
+  if (payload.data.stickyNoteText) {
+    const color = payload.data.stickyNoteColor ?? "yellow";
+    const tag = color === "pink" ? "STICKY_PINK" : color === "blue" ? "STICKY_BLUE" : "STICKY_YELLOW";
+    const note = await NoteModel.findOne({ _id: params.id, userId: authResult.userId });
+    if (!note) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    const appended = `${note.content.trim()}\n[${tag}] ${payload.data.stickyNoteText.trim()} [/${tag}]`;
+    note.content = appended;
+    note.htmlContent = `${note.htmlContent.trim()}\n[${tag}] ${payload.data.stickyNoteText.trim()} [/${tag}]`;
+    if (typeof payload.data.isFavorite === "boolean") {
+      note.isFavorite = payload.data.isFavorite;
+    }
+    await note.save();
+    return NextResponse.json({ note });
+  }
+
+  const note = await NoteModel.findOneAndUpdate({ _id: params.id, userId: authResult.userId }, { $set: update }, { new: true }).lean();
 
   if (!note) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
