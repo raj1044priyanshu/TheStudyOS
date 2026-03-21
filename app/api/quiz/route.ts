@@ -164,6 +164,30 @@ export async function POST(request: Request) {
   }
 }
 
+export async function GET() {
+  const authResult = await requireUser();
+  if (authResult.error) return authResult.error;
+
+  await connectToDatabase();
+  const quizzes = await QuizModel.find({ userId: authResult.userId })
+    .sort({ completedAt: -1, createdAt: -1 })
+    .select("topic subject score totalQuestions completedAt autopsy")
+    .limit(25)
+    .lean();
+
+  return NextResponse.json({
+    quizzes: quizzes.map((quiz) => ({
+      _id: quiz._id.toString(),
+      topic: quiz.topic,
+      subject: quiz.subject,
+      score: quiz.score ?? null,
+      totalQuestions: quiz.totalQuestions ?? 0,
+      completedAt: quiz.completedAt ? new Date(quiz.completedAt).toISOString() : null,
+      hasAutopsy: Boolean(quiz.autopsy)
+    }))
+  });
+}
+
 export async function PATCH(request: Request) {
   const authResult = await requireUser();
   if (authResult.error) return authResult.error;
@@ -273,7 +297,7 @@ export async function PATCH(request: Request) {
       type: "system",
       title: `${events.streakMilestone.milestone}-day streak reached`,
       message: `You extended your streak to ${events.streakMilestone.milestone} days.`,
-      actionUrl: "/progress"
+      actionUrl: "/dashboard/track"
     }).catch((error) => {
       console.error("Failed to create streak-milestone notification for quiz event", error);
     });

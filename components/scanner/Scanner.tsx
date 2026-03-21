@@ -9,6 +9,8 @@ import heic2any from "heic2any";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { NextStepCard } from "@/components/shared/NextStepCard";
+import { getHubHref } from "@/lib/hubs";
 
 interface ScanAnalysis {
   _id: string;
@@ -124,21 +126,21 @@ export function Scanner() {
       toast.error(data.error ?? "Could not convert scan");
       return;
     }
-    router.push(`/notes/${data.noteId}`);
+    router.push(`/dashboard/notes/${data.noteId}`);
   }
 
   const tabs = [
-    { key: "transcription", label: "📝 Transcription" },
-    { key: "concepts", label: "🧠 Concepts" },
-    ...(analysis?.errors?.length ? [{ key: "errors", label: "⚠️ Errors" }] : []),
-    { key: "summary", label: "📋 Summary" }
+    { key: "transcription", label: "Transcription" },
+    { key: "concepts", label: "Concepts" },
+    ...(analysis?.errors?.length ? [{ key: "errors", label: "Errors" }] : []),
+    { key: "summary", label: "Summary" }
   ] as const;
 
   return (
     <div className="space-y-5">
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Capture</p>
-        <h2 className="mt-2 font-headline text-4xl tracking-[-0.04em] text-[var(--foreground)] sm:text-6xl">Scanner</h2>
+        <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.04em] text-[var(--foreground)]">Scanner</h2>
         <p className="mt-2 max-w-2xl text-base leading-7 text-[var(--muted-foreground)]">
           Photograph notes, textbook pages, or handwritten work and turn them into searchable transcription, concepts, and corrections.
         </p>
@@ -187,10 +189,15 @@ export function Scanner() {
                 <div className="relative overflow-hidden rounded-[24px] bg-[color:var(--surface-low)] p-3">
                   {loading ? <div className="absolute inset-x-0 top-0 h-1 animate-[scanner_1.8s_linear_infinite] bg-[#7B6CF6]" /> : null}
                   <ReactCrop crop={crop} onChange={(next) => setCrop(next)}>
-                    <img
-                      ref={imageRef}
+                    <Image
                       src={preview}
                       alt="Scan preview"
+                      width={960}
+                      height={1280}
+                      unoptimized
+                      onLoad={(event) => {
+                        imageRef.current = event.currentTarget as HTMLImageElement;
+                      }}
                       className="max-h-[460px] w-full rounded-[18px] object-contain"
                       style={{ transform: `rotate(${rotation}deg)` }}
                     />
@@ -250,7 +257,7 @@ export function Scanner() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-[var(--muted-foreground)]">✅ No errors found!</p>
+                    <p className="text-sm text-[var(--muted-foreground)]">No errors found.</p>
                   )}
                 </div>
               ) : null}
@@ -261,7 +268,7 @@ export function Scanner() {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              <Button onClick={() => void convertToNote()}>✨ Convert to StudyOS Note</Button>
+              <Button onClick={() => void convertToNote()}>Convert to StudyOS Note</Button>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -269,7 +276,7 @@ export function Scanner() {
                   toast.success("Scan saved");
                 }}
               >
-                💾 Save Scan
+                Save Scan
               </Button>
               <Button
                 variant="ghost"
@@ -280,10 +287,34 @@ export function Scanner() {
                   setSavedMessage("");
                 }}
               >
-                🗑 Discard
+                Discard
               </Button>
             </div>
             {savedMessage ? <p className="mt-3 text-sm text-[#0F766E]">{savedMessage}</p> : null}
+
+            <div className="mt-5">
+              <NextStepCard
+                suggestions={[
+                  {
+                    icon: "",
+                    title: "Convert this scan into a StudyOS note",
+                    description: "Turn the page into a reusable note so it joins the rest of your study system.",
+                    action: "convert_scan"
+                  },
+                  {
+                    icon: "",
+                    title: "Ask a doubt about this page",
+                    description: "Pick one unclear concept from the scan and get a focused explanation next.",
+                    href: `${getHubHref("study", "doubts")}&subject=${encodeURIComponent(analysis.subject)}`
+                  }
+                ]}
+                onAction={(action) => {
+                  if (action === "convert_scan") {
+                    return convertToNote();
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
       )}

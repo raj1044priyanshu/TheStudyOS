@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     type: "note" as const,
     title: note.title,
     subtitle: `${note.subject} • ${note.topic} • ${new Date(note.createdAt).toLocaleDateString("en-IN")}`,
-    href: `/notes/${note._id.toString()}`
+    href: `/dashboard/notes/${note._id.toString()}`
   }));
 
   const quizResults = quizzes.map((quiz) => ({
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
     type: "quiz" as const,
     title: `${quiz.subject}: ${quiz.topic}`,
     subtitle: quiz.completedAt ? "Completed quiz" : "Pending quiz",
-    href: `/quiz/${quiz._id.toString()}`
+    href: `/dashboard/quiz/${quiz._id.toString()}`
   }));
 
   const planResults = plans.map((plan) => ({
@@ -74,14 +74,14 @@ export async function GET(request: Request) {
     type: "planner" as const,
     title: plan.name ?? "Study Plan",
     subtitle: `${plan.subjects?.length ?? 0} subjects`,
-    href: "/planner"
+    href: "/dashboard/plan?tool=planner"
   }));
 
   const featureResults = [
-    { id: "notes", type: "feature" as const, title: "Open Notes", subtitle: "Generate topper-style notes", href: "/notes" },
-    { id: "quiz", type: "feature" as const, title: "Open Quiz", subtitle: "Practice MCQs and track scores", href: "/quiz" },
-    { id: "planner", type: "feature" as const, title: "Open Planner", subtitle: "Schedule your daily tasks", href: "/planner" },
-    { id: "progress", type: "feature" as const, title: "Open Progress", subtitle: "Review streak and achievements", href: "/progress" }
+    { id: "notes", type: "feature" as const, title: "Open Notes", subtitle: "Generate topper-style notes", href: "/dashboard/study?tool=notes" },
+    { id: "quiz", type: "feature" as const, title: "Open Quiz", subtitle: "Practice MCQs and track scores", href: "/dashboard/test?tool=quiz" },
+    { id: "planner", type: "feature" as const, title: "Open Planner", subtitle: "Schedule your daily tasks", href: "/dashboard/plan?tool=planner" },
+    { id: "progress", type: "feature" as const, title: "Open Track", subtitle: "Review streak and achievements", href: "/dashboard/track" }
   ].filter((item) => item.title.toLowerCase().includes(q.toLowerCase()) || item.subtitle.toLowerCase().includes(q.toLowerCase()));
 
   const results = [...noteResults, ...quizResults, ...planResults, ...featureResults].slice(0, 10);

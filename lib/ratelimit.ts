@@ -21,7 +21,9 @@ const policies = {
   studyRoom: () => Ratelimit.slidingWindow(120, "1 h"),
   achievements: () => Ratelimit.slidingWindow(60, "1 h"),
   graph: () => Ratelimit.slidingWindow(40, "1 h"),
-  formula: () => Ratelimit.slidingWindow(60, "1 h")
+  formula: () => Ratelimit.slidingWindow(60, "1 h"),
+  feedback: () => Ratelimit.slidingWindow(10, "1 h"),
+  clientError: () => Ratelimit.slidingWindow(60, "1 h")
 } as const;
 
 export type RateLimitPolicy = keyof typeof policies;

@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import {
-  IconLogout,
-  IconSparkles
-} from "@tabler/icons-react";
+import { IconLogout, IconShield } from "@tabler/icons-react";
+import { useMemo } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Logo } from "@/components/shared/Logo";
-import { APP_NAV_ITEMS } from "@/lib/navigation";
+import { Button } from "@/components/ui/button";
+import { getHubNavKey, HUB_NAV_ITEMS } from "@/lib/hubs";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -17,87 +16,112 @@ interface Props {
     name?: string | null;
     image?: string | null;
   };
+  isAdmin?: boolean;
 }
 
-export function Sidebar({ user }: Props) {
+export function Sidebar({ user, isAdmin = false }: Props) {
   const pathname = usePathname();
-  const isNoteViewer = pathname.startsWith("/notes/");
-  const coreItems = APP_NAV_ITEMS.slice(0, 5);
-  const studyItems = APP_NAV_ITEMS.slice(5);
-
-  if (isNoteViewer) {
-    return null;
-  }
-
-  function renderNavGroup(label: string, items: typeof APP_NAV_ITEMS) {
-    return (
-      <div className="space-y-2.5">
-        <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--tertiary-foreground)]">{label}</p>
-        <nav className="space-y-1.5">
-          {items.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                prefetch
-                data-tour-id={item.tourId}
-                className={cn(
-                  "group flex min-h-[52px] items-center gap-3 rounded-[20px] border px-3.5 py-2.5 text-sm transition-all duration-150",
-                  active
-                    ? "border-[color:var(--secondary-button-border)] bg-[color:var(--nav-active-bg)] text-[var(--foreground)] shadow-[0_18px_32px_rgba(123,108,246,0.12),inset_0_1px_0_rgba(255,255,255,0.16)]"
-                    : "border-transparent text-[var(--muted-foreground)] hover:border-[color:var(--panel-border)] hover:bg-[color:var(--nav-hover-bg)] hover:text-[var(--foreground)]"
-                )}
-              >
-                <span
-                  className={cn(
-                    "h-8 w-1.5 rounded-full transition-all",
-                    active ? "bg-[#7B6CF6] shadow-[0_0_18px_rgba(123,108,246,0.42)]" : "bg-transparent group-hover:bg-[#7B6CF6]/20"
-                  )}
-                />
-                <span
-                  className={cn(
-                    "inline-flex h-10 w-10 items-center justify-center rounded-[14px] border transition-all",
-                    active
-                      ? "surface-icon border-[color:var(--secondary-button-border)]"
-                      : "surface-icon-muted border-transparent group-hover:border-[color:var(--panel-border)] group-hover:text-[var(--nav-icon-fg)]"
-                  )}
-                >
-                  <item.icon className="h-[18px] w-[18px]" />
-                </span>
-                <span className={cn("font-medium tracking-[-0.01em]", active && "font-semibold text-[var(--foreground)]")}>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-    );
-  }
+  const activeKey = useMemo(() => getHubNavKey(pathname), [pathname]);
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-72 shrink-0 px-4 py-4 md:flex">
-      <div className="glass-card flex h-[calc(100dvh-2rem)] min-h-0 w-full flex-col px-4 py-4">
-        <Logo className="mb-6 px-1.5" textClassName="text-[34px]" subtitleClassName="text-[10px] tracking-[0.24em]" />
+    <aside id="sidebar" className="sticky top-0 hidden h-screen w-[280px] shrink-0 px-4 py-4 md:flex">
+      <div className="glass-card flex h-[calc(100dvh-2rem)] min-h-0 w-full flex-col px-4 py-5">
+        <Logo
+          className="mb-8 px-2"
+          textClassName="text-[38px]"
+          subtitleClassName="max-w-[10.5rem] text-[10px] leading-[1.45] tracking-[0.22em]"
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 pt-4 scrollbar-thin">
+          <nav className="space-y-2">
+            {HUB_NAV_ITEMS.slice(0, 1).map((item) => {
+              const active = activeKey === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group relative flex min-h-[56px] items-center gap-3.5 rounded-[20px] border px-4 py-3 text-sm transition-all duration-150",
+                    active
+                      ? "border-[color:var(--secondary-button-border)] bg-[color:var(--nav-active-bg)] text-[var(--foreground)] shadow-[0_18px_32px_rgba(123,108,246,0.12),inset_0_1px_0_rgba(255,255,255,0.16)]"
+                      : "border-transparent text-[var(--muted-foreground)] hover:bg-[color:var(--nav-hover-bg)] hover:text-[var(--foreground)]"
+                  )}
+                >
+                  <span className={cn("h-8 w-1.5 rounded-full", active ? "bg-[#7B6CF6] shadow-[0_0_18px_rgba(123,108,246,0.42)]" : "bg-transparent")} />
+                  <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-[14px]", active ? "surface-icon" : "surface-icon-muted")}>
+                    <item.icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className={cn("font-medium tracking-[-0.01em]", active && "font-semibold text-[var(--foreground)]")}>{item.label}</span>
+                </Link>
+              );
+            })}
 
-        <div className="surface-card rounded-[22px] p-3.5">
-          <div className="flex items-center gap-3">
-            <span className="surface-icon inline-flex h-10 w-10 items-center justify-center rounded-[16px]">
-              <IconSparkles className="h-[18px] w-[18px]" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[var(--foreground)]">Study mode is active</p>
-              <p className="text-[11px] leading-4 text-[var(--muted-foreground)]">Soft focus, calmer contrast, less clutter.</p>
-            </div>
-          </div>
-        </div>
+            <div className="my-3 h-px rounded-full bg-[color:var(--panel-border)]" />
 
-        <div className="min-h-0 flex-1 overflow-y-auto pr-1 pt-5 scrollbar-thin">
-          {renderNavGroup("Core", coreItems)}
-          <div className="h-5" />
-          {renderNavGroup("Study Tools", studyItems)}
+            {HUB_NAV_ITEMS.slice(1, 6).map((item) => {
+              const active = activeKey === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group relative flex min-h-[56px] items-center gap-3.5 rounded-[20px] border px-4 py-3 text-sm transition-all duration-150",
+                    active
+                      ? "border-[color:var(--secondary-button-border)] bg-[color:var(--nav-active-bg)] text-[var(--foreground)] shadow-[0_18px_32px_rgba(123,108,246,0.12),inset_0_1px_0_rgba(255,255,255,0.16)]"
+                      : "border-transparent text-[var(--muted-foreground)] hover:bg-[color:var(--nav-hover-bg)] hover:text-[var(--foreground)]"
+                  )}
+                >
+                  <span className={cn("h-8 w-1.5 rounded-full", active ? "bg-[#7B6CF6] shadow-[0_0_18px_rgba(123,108,246,0.42)]" : "bg-transparent")} />
+                  <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-[14px]", active ? "surface-icon" : "surface-icon-muted")}>
+                    <item.icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <span className={cn("block font-medium tracking-[-0.01em]", active && "font-semibold text-[var(--foreground)]")}>{item.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+
+            <div className="my-3 h-px rounded-full bg-[color:var(--panel-border)]" />
+
+            {HUB_NAV_ITEMS.slice(6).map((item) => {
+              const active = activeKey === item.key;
+              return (
+                <Link
+                  key={item.key}
+                  href={item.href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group relative flex min-h-[56px] items-center gap-3.5 rounded-[20px] border px-4 py-3 text-sm transition-all duration-150",
+                    active
+                      ? "border-[color:var(--secondary-button-border)] bg-[color:var(--nav-active-bg)] text-[var(--foreground)] shadow-[0_18px_32px_rgba(123,108,246,0.12),inset_0_1px_0_rgba(255,255,255,0.16)]"
+                      : "border-transparent text-[var(--muted-foreground)] hover:bg-[color:var(--nav-hover-bg)] hover:text-[var(--foreground)]"
+                  )}
+                >
+                  <span className={cn("h-8 w-1.5 rounded-full", active ? "bg-[#7B6CF6] shadow-[0_0_18px_rgba(123,108,246,0.42)]" : "bg-transparent")} />
+                  <span className={cn("inline-flex h-10 w-10 items-center justify-center rounded-[14px]", active ? "surface-icon" : "surface-icon-muted")}>
+                    <item.icon className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className={cn("font-medium tracking-[-0.01em]", active && "font-semibold text-[var(--foreground)]")}>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
         <div className="mt-auto pt-4">
+          {isAdmin ? (
+            <Link href="/admin" className="mb-3 block">
+              <Button variant="secondary" className="w-full justify-between">
+                <span className="flex items-center gap-2">
+                  <IconShield className="h-4 w-4" />
+                  Admin control
+                </span>
+                <span className="text-xs uppercase tracking-[0.14em]">Open</span>
+              </Button>
+            </Link>
+          ) : null}
           <div className="surface-card-strong rounded-[24px] p-3.5">
             <div className="flex items-center gap-3">
               <Avatar src={user.image} alt={user.name ?? "Student"} />

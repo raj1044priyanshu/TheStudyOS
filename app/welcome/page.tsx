@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { WelcomeExperience } from "@/components/onboarding/WelcomeExperience";
 import { connectToDatabase } from "@/lib/mongodb";
 import { UserModel } from "@/models/User";
 
@@ -11,11 +10,9 @@ export default async function WelcomePage() {
   }
 
   await connectToDatabase();
-  const user = await UserModel.findById(session.user.id).select("name welcomeScreenSeen").lean();
-
-  if (user?.welcomeScreenSeen !== false) {
-    redirect("/dashboard");
+  const user = await UserModel.findById(session.user.id).select("onboardingCompleted status").lean();
+  if (user?.status === "suspended") {
+    redirect("/suspended");
   }
-
-  return <WelcomeExperience name={user?.name ?? session.user.name ?? "Student"} />;
+  redirect(user?.onboardingCompleted ? "/dashboard" : "/onboarding");
 }

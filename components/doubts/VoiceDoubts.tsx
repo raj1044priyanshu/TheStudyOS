@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { IconMicrophone, IconPlayerPause, IconVolumeOff } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,101 @@ export function VoiceDoubts() {
   const [muted, setMuted] = useState(false);
   const [supported, setSupported] = useState(true);
   const recognitionRef = useRef<InstanceType<RecognitionConstructor> | null>(null);
+  const interimTranscriptRef = useRef("");
+  const voiceStateRef = useRef<VoiceState>("idle");
+
+  const speak = useCallback(
+    async (text: string) => {
+      if (muted || !text) return;
+      setVoiceState("speaking");
+
+      const speakNow = () => {
+        const utterance = new SpeechSynthesisUtterance(stripMarkdown(text));
+        utterance.rate = 0.95;
+        utterance.pitch = 1;
+        utterance.lang = "en-IN";
+        utterance.onend = () => setVoiceState("idle");
+        window.speechSynthesis.speak(utterance);
+      };
+
+      if (!window.speechSynthesis.getVoices().length) {
+        window.speechSynthesis.onvoiceschanged = () => speakNow();
+        return;
+      }
+      speakNow();
+    },
+    [muted]
+  );
+
+  const submitTranscript = useCallback(
+    async (message: string) => {
+      if (!message) {
+        setVoiceState("idle");
+        return;
+      }
+
+      setVoiceState("processing");
+      setInterimTranscript("");
+      interimTranscriptRef.current = "";
+      const history = messages.slice(-10).map((item) => ({ role: item.role, content: item.content }));
+      const nextMessages: DoubtMessage[] = [
+        ...messages,
+        { role: "user", content: message, timestamp: new Date().toISOString(), inputMode: "voice" }
+      ];
+      setMessages(nextMessages);
+
+      try {
+        const response = await fetch("/api/doubts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message, history, subject })
+        });
+        if (!response.ok || !response.body) {
+          throw new Error("Could not get a voice response right now.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let aiContent = "";
+
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "", timestamp: new Date().toISOString() }
+        ]);
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          aiContent += decoder.decode(value, { stream: true });
+          setMessages((prev) => {
+            const copy = [...prev];
+            copy[copy.length - 1] = {
+              ...copy[copy.length - 1],
+              content: aiContent
+            };
+            return copy;
+          });
+        }
+
+        await speak(aiContent);
+        if (muted) {
+          setVoiceState("idle");
+        }
+      } catch (error) {
+        setVoiceState("idle");
+        toast.error(error instanceof Error ? error.message : "Could not solve this doubt.");
+      }
+    },
+    [messages, muted, speak, subject]
+  );
+
+  useEffect(() => {
+    interimTranscriptRef.current = interimTranscript;
+  }, [interimTranscript]);
+
+  useEffect(() => {
+    voiceStateRef.current = voiceState;
+  }, [voiceState]);
 
   useEffect(() => {
     const SpeechRecognitionCtor =
@@ -55,6 +150,7 @@ export function VoiceDoubts() {
       const transcript = Array.from(event.results)
         .map((result) => (result as ArrayLike<{ transcript: string }>)[0]?.transcript ?? "")
         .join(" ");
+      interimTranscriptRef.current = transcript;
       setInterimTranscript(transcript);
     };
     recognition.onerror = (event) => {
@@ -68,96 +164,18 @@ export function VoiceDoubts() {
       toast.error(messageMap[event.error] ?? "Voice input failed.");
     };
     recognition.onend = () => {
-      if (voiceState === "recording") {
-        void submitTranscript(interimTranscript.trim());
+      if (voiceStateRef.current === "recording") {
+        void submitTranscript(interimTranscriptRef.current.trim());
       }
     };
 
     recognitionRef.current = recognition;
-  }, [interimTranscript, voiceState]);
+  }, [submitTranscript]);
 
   const lastAssistantMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "assistant")?.content ?? "",
     [messages]
   );
-
-  async function speak(text: string) {
-    if (muted || !text) return;
-    setVoiceState("speaking");
-
-    const speakNow = () => {
-      const utterance = new SpeechSynthesisUtterance(stripMarkdown(text));
-      utterance.rate = 0.95;
-      utterance.pitch = 1;
-      utterance.lang = "en-IN";
-      utterance.onend = () => setVoiceState("idle");
-      window.speechSynthesis.speak(utterance);
-    };
-
-    if (!window.speechSynthesis.getVoices().length) {
-      window.speechSynthesis.onvoiceschanged = () => speakNow();
-      return;
-    }
-    speakNow();
-  }
-
-  async function submitTranscript(message: string) {
-    if (!message) {
-      setVoiceState("idle");
-      return;
-    }
-
-    setVoiceState("processing");
-    setInterimTranscript("");
-    const history = messages.slice(-10).map((item) => ({ role: item.role, content: item.content }));
-    const nextMessages: DoubtMessage[] = [
-      ...messages,
-      { role: "user", content: message, timestamp: new Date().toISOString(), inputMode: "voice" }
-    ];
-    setMessages(nextMessages);
-
-    try {
-      const response = await fetch("/api/doubts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, history, subject })
-      });
-      if (!response.ok || !response.body) {
-        throw new Error("Could not get a voice response right now.");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let aiContent = "";
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "", timestamp: new Date().toISOString() }
-      ]);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        aiContent += decoder.decode(value, { stream: true });
-        setMessages((prev) => {
-          const copy = [...prev];
-          copy[copy.length - 1] = {
-            ...copy[copy.length - 1],
-            content: aiContent
-          };
-          return copy;
-        });
-      }
-
-      await speak(aiContent);
-      if (muted) {
-        setVoiceState("idle");
-      }
-    } catch (error) {
-      setVoiceState("idle");
-      toast.error(error instanceof Error ? error.message : "Could not solve this doubt.");
-    }
-  }
 
   function startRecording() {
     if (!supported || !recognitionRef.current) {
@@ -217,7 +235,7 @@ export function VoiceDoubts() {
                     }`}
                     style={message.role === "assistant" ? { borderColor: `${color}30` } : undefined}
                   >
-                    {message.role === "user" && message.inputMode === "voice" ? <span className="mr-2">🎙</span> : null}
+                    {message.role === "user" && message.inputMode === "voice" ? <IconMicrophone className="mr-2 inline h-4 w-4" /> : null}
                     {message.content}
                   </div>
                 </div>

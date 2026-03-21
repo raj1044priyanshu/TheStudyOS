@@ -1,5 +1,10 @@
-import { RevisionQueue } from "@/components/revision/RevisionQueue";
+import { redirect } from "next/navigation";
+import { mergeHrefWithSearch } from "@/lib/hubs";
 
-export default function RevisionRoute() {
-  return <RevisionQueue />;
+export default function RevisionRoute({
+  searchParams
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  redirect(mergeHrefWithSearch("/dashboard/revise?tool=revision-queue", searchParams));
 }

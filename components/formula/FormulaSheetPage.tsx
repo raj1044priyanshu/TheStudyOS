@@ -233,7 +233,7 @@ export function FormulaSheetPage() {
                 </div>
                 <div className="mt-4 text-center">
                   {formula.sourceNoteId ? (
-                    <Link href={`/notes/${formula.sourceNoteId}`} className="text-sm text-[#7B6CF6]">
+                    <Link href={`/dashboard/notes/${formula.sourceNoteId}`} className="text-sm text-[#7B6CF6]">
                       From: {formula.sourceNoteTitle || "Linked note"}
                     </Link>
                   ) : (

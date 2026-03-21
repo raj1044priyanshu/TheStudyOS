@@ -27,11 +27,11 @@ interface UpcomingDay {
 }
 
 const RATING_OPTIONS = [
-  { label: "😵 Forgot", value: 0 },
-  { label: "😕 Hard", value: 2 },
-  { label: "😐 Okay", value: 3 },
-  { label: "😊 Good", value: 4 },
-  { label: "🤩 Perfect", value: 5 }
+  { label: "Forgot", value: 0 },
+  { label: "Hard", value: 2 },
+  { label: "Okay", value: 3 },
+  { label: "Good", value: 4 },
+  { label: "Perfect", value: 5 }
 ];
 
 export function RevisionQueue() {
@@ -79,7 +79,7 @@ export function RevisionQueue() {
     <div className="space-y-5">
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Spaced Repetition</p>
-        <h2 className="mt-2 font-headline text-4xl tracking-[-0.04em] text-[var(--foreground)] sm:text-6xl">Revision</h2>
+        <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.04em] text-[var(--foreground)]">Revision</h2>
         <p className="mt-2 max-w-2xl text-base leading-7 text-[var(--muted-foreground)]">
           Review what is due today, rate how well it came back, and let the next interval adapt around that recall quality.
         </p>
@@ -92,11 +92,11 @@ export function RevisionQueue() {
       ) : null}
 
       {due.length === 0 ? (
-        <EmptyState title="All caught up" description="✅ All caught up! Nothing due today." />
+        <EmptyState title="All caught up" description="All caught up. Nothing due today." />
       ) : (
         <section className="space-y-4">
           <h3 className="font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Due Today</h3>
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div id="revision-due-list" className="grid gap-4 xl:grid-cols-2">
             {due.map((item) => {
               const color = SUBJECT_COLOR_VALUES[item.subject] ?? SUBJECT_COLOR_VALUES.Other;
               const isOverdue = new Date(item.nextReviewDate).getTime() < Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -134,7 +134,7 @@ export function RevisionQueue() {
           <h3 className="font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Upcoming</h3>
           {overdueCount > 0 ? <span className="text-sm text-[#B45309]">{overdueCount} heavily overdue</span> : null}
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-7">
+        <div id="revision-calendar-strip" className="mt-4 grid gap-3 md:grid-cols-7">
           {upcoming.map((day) => (
             <div key={day.date} className="surface-card rounded-[20px] p-4">
               <p className="text-sm font-semibold text-[var(--foreground)]">{new Date(day.date).toLocaleDateString(undefined, { weekday: "short" })}</p>

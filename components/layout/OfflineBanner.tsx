@@ -1,5 +1,6 @@
 "use client";
 
+import { IconCheck, IconWifiOff } from "@tabler/icons-react";
 import { useEffect, useMemo, useState } from "react";
 
 export function OfflineBanner() {
@@ -8,8 +9,8 @@ export function OfflineBanner() {
   const message = useMemo(
     () =>
       isOffline
-        ? "📡 You're offline — showing cached content. Some features unavailable."
-        : "✅ Back online! Syncing...",
+        ? "You're offline — showing cached content. Some features are unavailable."
+        : "Back online. Syncing...",
     [isOffline]
   );
 
@@ -56,6 +57,9 @@ export function OfflineBanner() {
         color: "#1C1B29"
       }}
     >
+      <span className="mr-2 inline-flex">
+        {isOffline ? <IconWifiOff className="h-4 w-4" /> : <IconCheck className="h-4 w-4" />}
+      </span>
       {message}
     </div>
   );

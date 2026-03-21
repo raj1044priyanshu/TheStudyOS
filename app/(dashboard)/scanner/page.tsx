@@ -1,5 +1,10 @@
-import { Scanner } from "@/components/scanner/Scanner";
+import { redirect } from "next/navigation";
+import { mergeHrefWithSearch } from "@/lib/hubs";
 
-export default function ScannerRoute() {
-  return <Scanner />;
+export default function ScannerRoute({
+  searchParams
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
+  redirect(mergeHrefWithSearch("/dashboard/study?tool=scanner", searchParams));
 }

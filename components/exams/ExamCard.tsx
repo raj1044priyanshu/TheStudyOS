@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
+import { getHubHref } from "@/lib/hubs";
 
 interface PanicPlanDay {
   date: string;
@@ -118,14 +119,14 @@ export function ExamCard({ exam, onDeleted }: ExamCardProps) {
         <div className="mt-5 flex flex-wrap gap-2">
           {exam.readiness < 30 && exam.daysUntil < 4 && !exam.isPast ? (
             <Button onClick={() => void loadPanicPlan()} disabled={loadingPlan}>
-              🚨 Panic Mode
+              Panic Mode
             </Button>
           ) : null}
           <Link
-            href={`/planner?subject=${encodeURIComponent(exam.subject)}`}
+            href={`${getHubHref("plan", "planner")}&prefill=exam&examId=${encodeURIComponent(exam._id)}`}
             className={cn(buttonVariants({ variant: "outline" }))}
           >
-            📅 View Plan
+            View Plan
           </Link>
           <Button variant="ghost" onClick={deleteExam}>
             Delete
@@ -136,15 +137,15 @@ export function ExamCard({ exam, onDeleted }: ExamCardProps) {
       <Dialog
         open={panicOpen}
         onClose={() => setPanicOpen(false)}
-        title="🚨 Emergency Crash Plan"
+        title="Emergency Crash Plan"
         size="lg"
         footer={
           <div className="flex justify-end gap-2">
             <Link
-              href={`/planner?subject=${encodeURIComponent(exam.subject)}`}
+              href={`${getHubHref("plan", "planner")}&prefill=exam&examId=${encodeURIComponent(exam._id)}`}
               className={cn(buttonVariants({ variant: "outline" }))}
             >
-              📅 Add to Planner
+              Add to Planner
             </Link>
             <Button onClick={() => setPanicOpen(false)}>Close</Button>
           </div>

@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser } from "@/lib/api";
 import { UserModel } from "@/models/User";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH() {
   const authResult = await requireUser();
   if (authResult.error) return authResult.error;
@@ -15,10 +17,12 @@ export async function PATCH() {
     { _id: authResult.userId },
     {
       $set: {
-        welcomeScreenSeen: true
+        onboardingCompleted: true,
+        welcomeScreenSeen: true,
+        isTourShown: true
       }
     }
   );
 
-  return NextResponse.json({ success: true, welcomeScreenSeen: true });
+  return NextResponse.json({ success: true, onboardingCompleted: true, welcomeScreenSeen: true });
 }

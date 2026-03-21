@@ -1,4 +1,7 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
+import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, routeError } from "@/lib/api";
 import { NoteModel } from "@/models/Note";
@@ -6,6 +9,7 @@ import { QuizModel } from "@/models/Quiz";
 import { FocusSessionModel } from "@/models/FocusSession";
 import { ScanResultModel } from "@/models/ScanResult";
 import { EvaluationModel } from "@/models/Evaluation";
+import { PlannerCheckpointModel } from "@/models/PlannerCheckpoint";
 import { ProgressModel } from "@/models/Progress";
 
 export async function GET() {
@@ -14,7 +18,8 @@ export async function GET() {
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();
-    const [notes, quizzes, focusSessions, scans, evaluations, mostStudied, avgQuiz] = await Promise.all([
+    const objectUserId = new Types.ObjectId(authResult.userId);
+    const [notes, quizzes, focusSessions, scans, evaluations, mostStudied, avgQuiz, checkpointStats] = await Promise.all([
       NoteModel.countDocuments({ userId: authResult.userId }),
       QuizModel.countDocuments({ userId: authResult.userId, completedAt: { $ne: null } }),
       FocusSessionModel.aggregate<{ totalMinutes: number; count: number }>([
@@ -33,6 +38,17 @@ export async function GET() {
       QuizModel.aggregate<{ avg: number }>([
         { $match: { userId: authResult.userId, completedAt: { $ne: null } } },
         { $group: { _id: null, avg: { $avg: "$score" } } }
+      ]),
+      PlannerCheckpointModel.aggregate<{ avg: number; total: number; passed: number }>([
+        { $match: { userId: objectUserId, status: "submitted" } },
+        {
+          $group: {
+            _id: null,
+            avg: { $avg: "$score" },
+            total: { $sum: 1 },
+            passed: { $sum: { $cond: ["$passed", 1, 0] } }
+          }
+        }
       ])
     ]);
 
@@ -45,7 +61,10 @@ export async function GET() {
         totalEvaluations: evaluations,
         totalStudyTime: focusSessions[0]?.totalMinutes ?? 0,
         mostStudiedSubject: mostStudied[0]?.subject ?? "—",
-        averageQuizScore: Math.round(avgQuiz[0]?.avg ?? 0)
+        averageQuizScore: Math.round(avgQuiz[0]?.avg ?? 0),
+        averageCheckpointScore: Math.round(checkpointStats[0]?.avg ?? 0),
+        totalCheckpoints: checkpointStats[0]?.total ?? 0,
+        passedCheckpoints: checkpointStats[0]?.passed ?? 0
       }
     });
   } catch (error) {

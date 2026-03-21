@@ -269,6 +269,48 @@ export async function sendWelcomeEmail(to: string, name: string) {
   });
 }
 
+export async function sendAdminErrorAlertEmail(
+  to: string,
+  payload: {
+    severity: "info" | "warning" | "error" | "fatal";
+    source: string;
+    message: string;
+    route: string;
+    url: string;
+    fingerprint: string;
+    occurrences: number;
+    statusCode: number;
+  }
+) {
+  const destination = payload.route || payload.url || "Unknown surface";
+  return sendEmail({
+    to,
+    subject: `[StudyOS ${payload.severity.toUpperCase()}] ${destination}`,
+    context: "admin error alert",
+    html: emailShell({
+      preheader: `${payload.severity.toUpperCase()} error detected in StudyOS.`,
+      eyebrow: "Admin alert",
+      title: `${payload.severity.toUpperCase()} error captured`,
+      intro: `StudyOS logged a ${payload.source} error that met the current alert threshold.`,
+      paragraphs: [
+        `Message: ${payload.message}`,
+        `Route: ${payload.route || "Not provided"}`,
+        `URL: ${payload.url || "Not provided"}`,
+        `Fingerprint: ${payload.fingerprint}`
+      ],
+      stats: [
+        { label: "Severity", value: payload.severity.toUpperCase() },
+        { label: "Occurrences", value: String(payload.occurrences) },
+        { label: "Status", value: String(payload.statusCode) }
+      ],
+      cta: {
+        label: "Open admin errors",
+        path: "/admin/errors"
+      }
+    })
+  });
+}
+
 export async function sendAchievementEmail(to: string, title: string, description: string) {
   return sendEmail({
     to,
@@ -282,7 +324,7 @@ export async function sendAchievementEmail(to: string, title: string, descriptio
       accent: "#7AD7B2",
       cta: {
         label: "See your progress",
-        path: "/progress"
+        path: "/dashboard/track"
       }
     }),
     context: "achievement"
@@ -301,8 +343,8 @@ export async function sendStreakMilestoneEmail(to: string, streak: number) {
       paragraphs: ["Protect it with one more focused action today, even if it is just a short note or quiz."],
       accent: "#9A8CFF",
       cta: {
-        label: "Open progress",
-        path: "/progress"
+        label: "Open track",
+        path: "/dashboard/track"
       }
     }),
     context: "streak milestone"
@@ -390,8 +432,8 @@ export async function sendWeeklySummaryEmail(
       paragraphs: ["Keep the rhythm going. Another small week of consistent work compounds faster than it feels."],
       accent: "#9A8CFF",
       cta: {
-        label: "Review progress",
-        path: "/progress"
+        label: "Review track",
+        path: "/dashboard/track"
       }
     }),
     context: "weekly summary"

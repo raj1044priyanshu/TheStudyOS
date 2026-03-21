@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && next dev",
-    "build": "next build",
-    "build:clean": "node -e \"require('fs').rmSync('.next-build',{recursive:true,force:true});require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && NEXT_DIST_DIR=.next-build next build",
+    "clean:artifacts": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true});require('fs').rmSync('.next-build',{recursive:true,force:true});require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\"",
+    "dev:clean": "npm run clean:artifacts && next dev",
+    "build": "npm run clean:artifacts && next build",
+    "build:clean": "npm run build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "node -e \"require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && tsc --noEmit --incremental false",
-    "verify:clean": "node -e \"require('fs').rmSync('.next-build',{recursive:true,force:true});require('fs').rmSync('tsconfig.tsbuildinfo',{force:true})\" && NEXT_DIST_DIR=.next-build next build && npm run typecheck"
+    "smoke:routes": "node scripts/smoke-routes.mjs",
+    "typecheck": "npm run clean:artifacts && tsc --noEmit --incremental false",
+    "verify:clean": "npm run lint && npm run typecheck && npm run build && npm run smoke:routes"
   },
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",
@@ -25,6 +27,7 @@
     "cloudinary": "^2.9.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "driver.js": "^1.4.0",
     "framer-motion": "^12.38.0",
     "groq-sdk": "^1.1.1",
     "heic2any": "^0.0.4",

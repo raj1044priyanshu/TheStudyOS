@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { PlannerDetails, PlannerSummary } from "@/types";
+import type { PlannerDetails, PlannerGenerationInput, PlannerSummary } from "@/types";
 
 interface PlannerState {
   plans: PlannerSummary[];
@@ -36,7 +36,7 @@ export function usePlanner() {
     void init();
   }, [load]);
 
-  async function generate(payload: Record<string, unknown>) {
+  async function generate(payload: PlannerGenerationInput) {
     setLoading(true);
     const response = await fetch("/api/planner", {
       method: "POST",

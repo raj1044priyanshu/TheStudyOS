@@ -66,7 +66,7 @@ export function ExamsPage() {
     <div className="space-y-5">
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Countdown</p>
-        <h2 className="mt-2 font-headline text-4xl tracking-[-0.04em] text-[var(--foreground)] sm:text-6xl">Exams</h2>
+        <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.04em] text-[var(--foreground)]">Exams</h2>
         <p className="mt-2 max-w-2xl text-base leading-7 text-[var(--muted-foreground)]">
           Track upcoming exams, readiness, and deadlines from one command center instead of juggling dates across tools.
         </p>

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { format, getDayOfYear, subDays } from "date-fns";
 import { Types } from "mongoose";
 import { NextResponse } from "next/server";

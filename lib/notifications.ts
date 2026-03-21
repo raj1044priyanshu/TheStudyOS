@@ -33,7 +33,7 @@ export async function createAchievementNotifications(
       type: "achievement",
       title: `Achievement unlocked: ${achievement.title}`,
       message: achievement.description,
-      actionUrl: "/progress",
+      actionUrl: "/dashboard/track",
       read: false
     }))
   );

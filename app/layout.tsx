@@ -8,6 +8,8 @@ import {
 import { auth } from "@/auth";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
 import { AppProviders } from "@/components/providers/app-providers";
+import { SiteAlertBanner } from "@/components/shared/SiteAlertBanner";
+import "driver.js/dist/driver.css";
 import "./globals.css";
 
 const dmSerif = DM_Serif_Display({ subsets: ["latin"], weight: ["400"], variable: "--font-heading" });
@@ -32,7 +34,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className={`${dmSerif.variable} ${jakarta.variable} ${caveat.variable} ${jetbrainsMono.variable}`}
       >
         <AuthSessionProvider session={session}>
-          <AppProviders>{children}</AppProviders>
+          <AppProviders>
+            <SiteAlertBanner />
+            {children}
+          </AppProviders>
         </AuthSessionProvider>
       </body>
     </html>

@@ -5,11 +5,15 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
+  IconArrowRight,
   IconArrowLeft,
+  IconCheck,
   IconFileDownload,
+  IconPointFilled,
   IconPhotoPlus,
   IconPrinter,
   IconSparkles,
+  IconStarFilled,
   IconZoomIn,
   IconZoomOut
 } from "@tabler/icons-react";
@@ -250,7 +254,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
   }
 
   function backFromReader() {
-    router.push("/notes");
+    router.push("/dashboard/study?tool=notes");
   }
 
   const effectiveZoom = isMobile ? 1 : zoom;
@@ -278,6 +282,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
         ) : null}
 
         <div
+          id="note-toolbar"
           className={cn(
             "glass-nav no-print z-10 overflow-x-auto rounded-full border border-[color:var(--panel-border)] p-2 shadow-[var(--panel-shadow)] backdrop-blur-[20px]",
             isMobile ? "fixed bottom-3 left-3 right-3" : "sticky top-4 mx-auto w-fit"
@@ -322,6 +327,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
             style={{ transform: `scale(${effectiveZoom})` }}
           >
             <div
+              id="note-paper"
               ref={paperRef}
               className="note-surface relative min-h-[calc(100dvh-7rem)] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] px-4 pb-8 pt-6 sm:min-h-[1123px] sm:px-10 sm:pb-12 sm:pt-10"
             >
@@ -380,17 +386,26 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                 }
 
                 if (block.tag === "STAR_POINT" || block.tag === "ARROW_POINT" || block.tag === "CHECK_POINT" || block.tag === "BULLET_POINT") {
-                  const symbolMap: Record<string, { symbol: string; className: string }> = {
-                    STAR_POINT: { symbol: "★", className: "text-[#FBBF24]" },
-                    ARROW_POINT: { symbol: "→", className: "text-[#3B82F6]" },
-                    CHECK_POINT: { symbol: "✓", className: "text-[#10B981]" },
-                    BULLET_POINT: { symbol: "•", className: "text-[#6B7280]" }
+                  const symbolMap: Record<
+                    string,
+                    {
+                      icon: typeof IconStarFilled;
+                      className: string;
+                    }
+                  > = {
+                    STAR_POINT: { icon: IconStarFilled, className: "text-[#FBBF24]" },
+                    ARROW_POINT: { icon: IconArrowRight, className: "text-[#3B82F6]" },
+                    CHECK_POINT: { icon: IconCheck, className: "text-[#10B981]" },
+                    BULLET_POINT: { icon: IconPointFilled, className: "text-[#6B7280]" }
                   };
                   const item = symbolMap[block.tag];
+                  const ItemIcon = item.icon;
 
                   return (
                     <p key={idx} className="flex items-start gap-3">
-                      <span className={cn("mt-0.5 text-base", item.className)}>{item.symbol}</span>
+                      <span className={cn("mt-1 inline-flex shrink-0", item.className)}>
+                        <ItemIcon className="h-4 w-4" />
+                      </span>
                       <span className="flex-1">{renderInlineHighlights(block.value ?? "")}</span>
                     </p>
                   );
@@ -462,6 +477,9 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
             </div>
           </div>
         </div>
+      </div>
+      <div id="simplify-instruction" className="no-print mx-auto max-w-[960px] rounded-[20px] border border-[color:var(--panel-border)] bg-[color:var(--surface-low)] px-4 py-3 text-sm text-[var(--muted-foreground)]">
+        Select any part of the note to open the Simplify panel with different explanation levels.
       </div>
       <SimplifierSlider noteId={noteId} subject={displaySubject} topic={displayTitle} />
     </>

@@ -36,6 +36,15 @@ const resilientGoogleFetch: typeof fetch = async (input, init) => {
   throw lastError;
 };
 
+function isBootstrapAdminEmail(email: string) {
+  const allowlist = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return allowlist.includes(email.trim().toLowerCase());
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   providers: [
@@ -63,16 +72,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       await connectToDatabase();
       const now = new Date();
       const existing = await UserModel.findOne({ email: user.email });
+      const shouldBootstrapAdmin = isBootstrapAdminEmail(user.email);
 
       if (existing) {
+        if (existing.status === "suspended") {
+          return false;
+        }
+
         existing.name = user.name ?? existing.name;
         existing.image = user.image ?? existing.image;
         existing.lastActive = now;
+        existing.role = shouldBootstrapAdmin ? "admin" : existing.role ?? "student";
+        if (!existing.status) {
+          existing.status = "active";
+        }
+        const shouldBackfillOnboarding =
+          existing.welcomeScreenSeen !== false ||
+          Boolean(existing.isTourShown) ||
+          (existing.totalNotesGenerated ?? 0) > 0 ||
+          (existing.totalQuizzesTaken ?? 0) > 0;
         if (typeof existing.isTourShown !== "boolean") {
           existing.isTourShown = false;
         }
         if (typeof existing.welcomeScreenSeen !== "boolean") {
           existing.welcomeScreenSeen = true;
+        }
+        if (typeof existing.onboardingCompleted !== "boolean") {
+          existing.onboardingCompleted = shouldBackfillOnboarding;
+        } else if (!existing.onboardingCompleted && shouldBackfillOnboarding) {
+          existing.onboardingCompleted = true;
+        }
+        if (typeof existing.onboardingStep !== "number") {
+          existing.onboardingStep = 0;
+        }
+        if (!existing.studyProfile) {
+          existing.studyProfile = {
+            class: "",
+            board: "",
+            subjects: [],
+            examGoal: "",
+            studyHoursPerDay: 0,
+            weakAreas: [],
+            studyStyle: ""
+          };
         }
         existing.timezone = normalizeTimeZone(existing.timezone);
         if (!existing.notificationPreferences) {
@@ -95,7 +137,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name ?? "Student",
           image: user.image,
           googleId: account?.providerAccountId,
+          role: shouldBootstrapAdmin ? "admin" : "student",
+          status: "active",
           lastActive: now,
+          onboardingCompleted: false,
+          onboardingStep: 0,
+          studyProfile: {
+            class: "",
+            board: "",
+            subjects: [],
+            examGoal: "",
+            studyHoursPerDay: 0,
+            weakAreas: [],
+            studyStyle: ""
+          },
           isTourShown: false,
           welcomeScreenSeen: false,
           timezone: "UTC",
@@ -124,12 +179,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async jwt({ token, user }) {
-      if (user?.email) {
+      const lookupEmail = user?.email ?? token.email;
+      if (lookupEmail) {
         await connectToDatabase();
-        const dbUser = await UserModel.findOne({ email: user.email }).select("_id image");
+        const dbUser = await UserModel.findOne({ email: lookupEmail }).select("_id image role status");
         if (dbUser) {
           token.id = dbUser._id.toString();
           token.picture = dbUser.image ?? token.picture;
+          token.role = dbUser.role ?? "student";
+          token.status = dbUser.status ?? "active";
         }
       }
       return token;
@@ -138,6 +196,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token.id) {
         session.user.id = String(token.id);
         session.user.image = (token.picture as string | null | undefined) ?? session.user.image;
+        session.user.role = token.role as "student" | "admin" | undefined;
+        session.user.status = token.status as "active" | "suspended" | undefined;
       }
       return session;
     }

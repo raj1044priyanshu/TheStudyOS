@@ -230,6 +230,45 @@ body::after {
   background: var(--orb-two);
 }
 
+.studyos-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  height: 3px;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(0);
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, #7b6cf6 0%, #6ee7b7 100%);
+  box-shadow: 0 0 18px rgba(123, 108, 246, 0.42);
+  transition:
+    transform 180ms ease-out,
+    opacity 160ms ease-out;
+}
+
+.studyos-loading-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.7) 55%, transparent 100%);
+  animation: studyos-loading-bar-shimmer 1.1s linear infinite;
+}
+
+.studyos-loading-bar--visible {
+  opacity: 1;
+}
+
+@keyframes studyos-loading-bar-shimmer {
+  0% {
+    transform: translateX(-140%);
+  }
+  100% {
+    transform: translateX(140%);
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -263,6 +302,53 @@ pre,
   border: 1px solid var(--glass-border);
   border-radius: 20px;
   box-shadow: var(--glass-shadow);
+}
+
+.studyos-tour-popover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(123, 108, 246, 0.15) !important;
+  color: var(--foreground) !important;
+  font-family: var(--font-body), sans-serif !important;
+}
+
+.dark .studyos-tour-popover {
+  background: rgba(28, 24, 42, 0.92) !important;
+  border-color: rgba(209, 198, 240, 0.16) !important;
+}
+
+.studyos-tour-popover .driver-popover-title {
+  font-family: var(--font-heading), serif !important;
+  font-size: 18px !important;
+  line-height: 1.2 !important;
+  color: var(--foreground) !important;
+}
+
+.studyos-tour-popover .driver-popover-description {
+  font-family: var(--font-body), sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  color: var(--muted-foreground) !important;
+}
+
+.studyos-tour-popover .driver-popover-next-btn {
+  border: none !important;
+  border-radius: 999px !important;
+  background: #7b6cf6 !important;
+  color: white !important;
+  padding: 10px 16px !important;
+  text-shadow: none !important;
+}
+
+.studyos-tour-popover .driver-popover-prev-btn {
+  border: none !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--muted-foreground) !important;
+  padding: 10px 16px !important;
+  text-shadow: none !important;
 }
 
 .dark .glass-card {
@@ -554,6 +640,27 @@ pre,
 
 .surface-outline {
   border: 1px solid color-mix(in srgb, var(--glass-border) 80%, transparent);
+}
+
+@media (max-width: 767px) {
+  body::before {
+    width: 420px;
+    height: 420px;
+    top: -150px;
+    left: -120px;
+  }
+
+  body::after {
+    width: 360px;
+    height: 360px;
+    right: -90px;
+    bottom: -110px;
+  }
+
+  .glass-card,
+  .glass-modal {
+    border-radius: 18px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

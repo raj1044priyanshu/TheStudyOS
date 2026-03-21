@@ -57,13 +57,13 @@ export function NoteCard({ note, onDelete, onFavorite }: Props) {
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
-          <Link href={`/notes/${note._id}`} className="contents">
+          <Link href={`/dashboard/notes/${note._id}`} className="contents">
             <Button size="sm" className="gap-1.5">
               <IconEye className="h-3.5 w-3.5" />
               View
             </Button>
           </Link>
-          <Link href={`/notes/${note._id}`} className="contents">
+          <Link href={`/dashboard/notes/${note._id}`} className="contents">
             <Button size="sm" variant="outline" className="gap-1.5">
               <IconFileDownload className="h-3.5 w-3.5" />
               PDF

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import Link from "next/link";
-import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconVolume, IconX } from "@tabler/icons-react";
+import { IconBooks, IconCloudRain, IconCoffee, IconTrees, IconVolume, IconVolumeOff, IconWaveSine, IconX, IconPlayerPauseFilled, IconPlayerPlayFilled } from "@tabler/icons-react";
 import toast from "react-hot-toast";
 import { SUBJECTS } from "@/lib/constants";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -11,19 +11,21 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
+import { NextStepCard } from "@/components/shared/NextStepCard";
 import { triggerAchievementCheck } from "@/lib/client-achievements";
+import { getHubHref } from "@/lib/hubs";
 
 const STORAGE_KEY = "studyos-focus-session";
 
 const DURATIONS = [25, 45, 60, 90] as const;
 
 const SOUNDS = [
-  { key: "Rain", icon: "🌧", url: "https://assets.mixkit.co/active_storage/sfx/124/124-preview.mp3" },
-  { key: "Cafe", icon: "☕", url: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" },
-  { key: "Library", icon: "📚", url: "https://assets.mixkit.co/active_storage/sfx/2532/2532-preview.mp3" },
-  { key: "Forest", icon: "🌲", url: "https://assets.mixkit.co/active_storage/sfx/2515/2515-preview.mp3" },
-  { key: "Ocean", icon: "🌊", url: "https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3" },
-  { key: "White Noise", icon: "⬜", url: "https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3" }
+  { key: "Rain", icon: IconCloudRain, url: "https://assets.mixkit.co/active_storage/sfx/124/124-preview.mp3" },
+  { key: "Cafe", icon: IconCoffee, url: "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" },
+  { key: "Library", icon: IconBooks, url: "https://assets.mixkit.co/active_storage/sfx/2532/2532-preview.mp3" },
+  { key: "Forest", icon: IconTrees, url: "https://assets.mixkit.co/active_storage/sfx/2515/2515-preview.mp3" },
+  { key: "Ocean", icon: IconWaveSine, url: "https://assets.mixkit.co/active_storage/sfx/209/209-preview.mp3" },
+  { key: "White Noise", icon: IconVolumeOff, url: "https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3" }
 ] as const;
 
 const QUOTES = [
@@ -143,34 +145,6 @@ export function FocusRoom() {
   }, [subject, topic, duration, soundUsed, phase, remainingMs, isRunning, endsAt]);
 
   useEffect(() => {
-    if (phase !== "active") {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-      return;
-    }
-
-    const tick = () => {
-      if (!isRunning || !endsAt) {
-        frameRef.current = requestAnimationFrame(tick);
-        return;
-      }
-
-      const nextRemaining = Math.max(0, endsAt - Date.now());
-      setRemainingMs(nextRemaining);
-      if (nextRemaining === 0) {
-        void completeSession(true);
-        return;
-      }
-      frameRef.current = requestAnimationFrame(tick);
-    };
-
-    frameRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    };
-  }, [phase, isRunning, endsAt]);
-
-  useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       if (phase === "active") {
         event.preventDefault();
@@ -268,7 +242,7 @@ export function FocusRoom() {
     audioRef.current?.pause();
   }
 
-  async function completeSession(wasCompleted: boolean) {
+  const completeSession = useCallback(async (wasCompleted: boolean) => {
     setSubmitting(true);
     setPhase("complete");
     setIsRunning(false);
@@ -296,7 +270,35 @@ export function FocusRoom() {
     } finally {
       setSubmitting(false);
     }
-  }
+  }, [duration, soundUsed, subject, topic]);
+
+  useEffect(() => {
+    if (phase !== "active") {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+      return;
+    }
+
+    const tick = () => {
+      if (!isRunning || !endsAt) {
+        frameRef.current = requestAnimationFrame(tick);
+        return;
+      }
+
+      const nextRemaining = Math.max(0, endsAt - Date.now());
+      setRemainingMs(nextRemaining);
+      if (nextRemaining === 0) {
+        void completeSession(true);
+        return;
+      }
+      frameRef.current = requestAnimationFrame(tick);
+    };
+
+    frameRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [completeSession, endsAt, isRunning, phase]);
 
   function resetAll() {
     setPhase("setup");
@@ -323,7 +325,7 @@ export function FocusRoom() {
         <div className="space-y-5">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Deep Work</p>
-            <h2 className="mt-2 font-headline text-4xl tracking-[-0.04em] text-[var(--foreground)] sm:text-6xl">Focus Room</h2>
+            <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.04em] text-[var(--foreground)]">Focus Room</h2>
             <p className="mt-2 max-w-2xl text-base leading-7 text-[var(--muted-foreground)]">
               Build a calm session with a precise timer, ambient sound, and a clean finish screen that rolls into your streak and next-step suggestion.
             </p>
@@ -388,7 +390,7 @@ export function FocusRoom() {
                       soundUsed === sound.key ? "border-[#7B6CF6] shadow-[0_14px_28px_rgba(123,108,246,0.14)]" : "border-transparent"
                     }`}
                   >
-                    <p className="text-2xl">{sound.icon}</p>
+                    <sound.icon className="h-6 w-6 text-[#7B6CF6]" />
                     <p className="mt-3 text-sm font-semibold text-[var(--foreground)]">{sound.key}</p>
                   </button>
                 ))}
@@ -456,14 +458,14 @@ export function FocusRoom() {
               </div>
             </div>
 
-            {audioUnavailable ? <p className="text-xs text-white/65">🔇 Audio unavailable</p> : null}
+            {audioUnavailable ? <p className="inline-flex items-center gap-2 text-xs text-white/65"><IconVolumeOff className="h-4 w-4" />Audio unavailable</p> : null}
           </div>
         </div>
       ) : null}
 
       {phase === "complete" ? (
         <div className="glass-card mx-auto max-w-3xl p-8 text-center">
-          <p className="font-headline text-5xl tracking-[-0.05em] text-[var(--foreground)]">Session Complete! 🎉</p>
+          <p className="font-headline text-[clamp(2.1rem,5vw,3rem)] tracking-[-0.05em] text-[var(--foreground)]">Session Complete</p>
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">
             {duration} minutes on {subject} • {topic}
           </p>
@@ -479,7 +481,7 @@ export function FocusRoom() {
             </div>
             <div className="surface-card rounded-[22px] p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Streak</p>
-              <p className="mt-3 font-headline text-[2rem] text-[var(--foreground)]">🔥 {completion?.streak ?? "—"}</p>
+              <p className="mt-3 font-headline text-[2rem] text-[var(--foreground)]">{completion?.streak ?? "—"}</p>
             </div>
           </div>
 
@@ -496,6 +498,25 @@ export function FocusRoom() {
             <Link href="/dashboard" className={cn(buttonVariants({ variant: "outline" }))}>
               Go to Dashboard
             </Link>
+          </div>
+
+          <div className="mt-6 text-left">
+            <NextStepCard
+              suggestions={[
+                {
+                  icon: "",
+                  title: `Test what you just studied: ${topic}`,
+                  description: "A quick quiz right after focus time turns effort into active recall.",
+                  href: `${getHubHref("test", "quiz")}&topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}`
+                },
+                {
+                  icon: "",
+                  title: "Generate notes if you don't have them",
+                  description: "Lock in the same topic with a structured note before moving on.",
+                  href: `${getHubHref("study", "notes")}&topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}`
+                }
+              ]}
+            />
           </div>
         </div>
       ) : null}

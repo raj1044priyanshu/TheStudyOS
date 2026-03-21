@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
+import { requireUser, routeError } from "@/lib/api";
 import { scheduleRevisionItem } from "@/lib/revision";
 
 const schema = z.object({

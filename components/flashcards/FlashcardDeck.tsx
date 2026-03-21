@@ -86,7 +86,7 @@ export function FlashcardDeck({ cards }: Props) {
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div id="flashcard-difficulty-btns" className="flex flex-wrap gap-2">
           <Button data-tour-id="flashcards-mark-easy" variant="ghost" className="bg-[#6EE7B7]/18 text-[#0F766E] hover:bg-[#6EE7B7]/28" onClick={() => markDifficulty("easy")}>
             Easy
           </Button>

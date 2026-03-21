@@ -20,6 +20,7 @@ export function isPusherConfigured() {
       process.env.PUSHER_KEY &&
       process.env.PUSHER_SECRET &&
       process.env.PUSHER_CLUSTER &&
-      process.env.NEXT_PUBLIC_PUSHER_KEY
+      process.env.NEXT_PUBLIC_PUSHER_KEY &&
+      process.env.NEXT_PUBLIC_PUSHER_CLUSTER
   );
 }

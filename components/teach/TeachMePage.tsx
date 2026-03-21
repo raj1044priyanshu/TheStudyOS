@@ -3,13 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import confetti from "canvas-confetti";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NextStepCard } from "@/components/shared/NextStepCard";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { SUBJECTS } from "@/lib/constants";
 import { triggerAchievementCheck } from "@/lib/client-achievements";
+import { getHubHref } from "@/lib/hubs";
 import { cn } from "@/lib/utils";
 
 interface SessionSummary {
@@ -37,6 +40,7 @@ interface EvaluationPayload {
 }
 
 export function TeachMePage() {
+  const searchParams = useSearchParams();
   const [subject, setSubject] = useState("Mathematics");
   const [topic, setTopic] = useState("");
   const [explanation, setExplanation] = useState("");
@@ -55,6 +59,17 @@ export function TeachMePage() {
   useEffect(() => {
     void loadHistory();
   }, []);
+
+  useEffect(() => {
+    const nextTopic = searchParams.get("topic");
+    const nextSubject = searchParams.get("subject");
+    if (nextTopic) {
+      setTopic(nextTopic);
+    }
+    if (nextSubject) {
+      setSubject(nextSubject);
+    }
+  }, [searchParams]);
 
   const charCount = useMemo(() => explanation.trim().length, [explanation]);
   const scoreColor = result
@@ -103,7 +118,7 @@ export function TeachMePage() {
               </p>
             </div>
 
-            <div className="glass-card space-y-4 p-6">
+            <div id="teachme-input-area" className="glass-card space-y-4 p-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[var(--foreground)]">Subject</label>
@@ -133,7 +148,7 @@ export function TeachMePage() {
               </div>
 
               <Button onClick={submit} disabled={loading || !topic.trim() || charCount < 50}>
-                {loading ? "Evaluating your explanation..." : "📤 Submit Explanation"}
+                {loading ? "Evaluating your explanation..." : "Submit Explanation"}
               </Button>
             </div>
           </>
@@ -141,7 +156,7 @@ export function TeachMePage() {
           <div className="space-y-5">
             {typeof result.improvementDelta === "number" && result.improvementDelta > 0 ? (
               <div className="rounded-[22px] bg-[#34D399]/12 px-5 py-4 text-sm font-medium text-[#0F766E]">
-                🎉 You improved by {result.improvementDelta} points!
+                You improved by {result.improvementDelta} points.
               </div>
             ) : null}
 
@@ -151,7 +166,7 @@ export function TeachMePage() {
               </div>
             ) : null}
 
-            <div className="glass-card grid gap-5 p-6 md:grid-cols-[220px_1fr]">
+            <div id="understanding-score" className="glass-card grid gap-5 p-6 md:grid-cols-[220px_1fr]">
               <div className="relative flex h-44 w-44 items-center justify-center justify-self-center">
                 <svg viewBox="0 0 160 160" className="h-44 w-44 -rotate-90">
                   <circle cx="80" cy="80" r="64" stroke="rgba(148,163,184,0.22)" strokeWidth="10" fill="none" />
@@ -182,20 +197,20 @@ export function TeachMePage() {
                       setExplanation("");
                     }}
                   >
-                    🔄 Try Again
+                    Try Again
                   </Button>
                   <Link
-                    href={`/notes?topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}`}
+                    href={`${getHubHref("study", "notes")}&topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}`}
                     className={cn(buttonVariants({ variant: "default" }))}
                   >
-                    📝 Generate Full Notes on This Topic
+                    Generate Full Notes on This Topic
                   </Link>
                 </div>
               </div>
             </div>
 
             <details className="glass-card rounded-[24px] p-5" open>
-              <summary className="cursor-pointer text-lg font-semibold text-[#10B981]">✅ What You Got Right</summary>
+              <summary className="cursor-pointer text-lg font-semibold text-[#10B981]">What You Got Right</summary>
               <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-[var(--foreground)]">
                 {(result.correctPoints.length ? result.correctPoints : ["You didn't quite hit the key points yet."]).map((point) => (
                   <li key={point}>{point}</li>
@@ -204,7 +219,7 @@ export function TeachMePage() {
             </details>
 
             <details className="glass-card rounded-[24px] p-5" open>
-              <summary className="cursor-pointer text-lg font-semibold text-[#EF4444]">❌ What You Missed</summary>
+              <summary className="cursor-pointer text-lg font-semibold text-[#EF4444]">What You Missed</summary>
               <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-[var(--foreground)]">
                 {(result.missedPoints.length ? result.missedPoints : ["Great coverage!"]).map((point) => (
                   <li key={point}>{point}</li>
@@ -213,7 +228,7 @@ export function TeachMePage() {
             </details>
 
             <details className="glass-card rounded-[24px] p-5" open>
-              <summary className="cursor-pointer text-lg font-semibold text-[#F59E0B]">⚠️ Misconceptions to Fix</summary>
+              <summary className="cursor-pointer text-lg font-semibold text-[#F59E0B]">Misconceptions to Fix</summary>
               <div className="mt-4 space-y-3">
                 {result.misconceptions.length ? (
                   result.misconceptions.map((item, index) => (
@@ -229,10 +244,44 @@ export function TeachMePage() {
             </details>
 
             <details className="glass-card rounded-[24px] p-5" open>
-              <summary className="cursor-pointer text-lg font-semibold text-[#7B6CF6]">🧠 The Simple Explanation</summary>
+              <summary className="cursor-pointer text-lg font-semibold text-[#7B6CF6]">The Simple Explanation</summary>
               <p className="mt-4 text-sm leading-7 text-[var(--foreground)]">{result.aiSimplifiedExplanation}</p>
               <p className="mt-3 text-sm text-[var(--muted-foreground)]">Compare this with what you wrote and notice the gaps in structure, accuracy, and clarity.</p>
             </details>
+
+            <NextStepCard
+              suggestions={
+                result.understandingScore < 70
+                  ? [
+                      {
+                        icon: "",
+                        title: `Re-read your notes on ${topic}`,
+                        description: "Go back to the core explanation first, then try teaching it again from memory.",
+                        href: `${getHubHref("study", "notes")}&topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}`
+                      },
+                      {
+                        icon: "",
+                        title: "Ask the Doubt Solver a specific question",
+                        description: "Use one precise doubt to repair the exact gap you found here.",
+                        href: `${getHubHref("study", "doubts")}&subject=${encodeURIComponent(subject)}`
+                      }
+                    ]
+                  : [
+                      {
+                        icon: "",
+                        title: "Confirm with a quiz",
+                        description: "You can explain it well. Now verify recall under test conditions.",
+                        href: `${getHubHref("test", "quiz")}&topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}`
+                      },
+                      {
+                        icon: "",
+                        title: "Mark this topic in your planner",
+                        description: "Keep the topic moving through your study system instead of leaving it isolated.",
+                        href: `${getHubHref("plan", "planner")}&prefill=manual&topic=${encodeURIComponent(topic)}&subject=${encodeURIComponent(subject)}&weakTopics=${encodeURIComponent(topic)}`
+                      }
+                    ]
+              }
+            />
           </div>
         )}
       </div>

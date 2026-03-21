@@ -13,10 +13,10 @@ export const XP_AWARDS = {
 } as const;
 
 export const LEVELS: LevelDefinition[] = [
-  { minXp: 0, maxXp: 99, level: 1, name: "Novice", icon: "🌱" },
-  { minXp: 100, maxXp: 499, level: 2, name: "Scholar", icon: "📖" },
-  { minXp: 500, maxXp: 1999, level: 3, name: "Genius", icon: "💡" },
-  { minXp: 2000, maxXp: null, level: 4, name: "Legend", icon: "👑" }
+  { minXp: 0, maxXp: 99, level: 1, name: "Novice", icon: "" },
+  { minXp: 100, maxXp: 499, level: 2, name: "Scholar", icon: "" },
+  { minXp: 500, maxXp: 1999, level: 3, name: "Genius", icon: "" },
+  { minXp: 2000, maxXp: null, level: 4, name: "Legend", icon: "" }
 ];
 
 export function getLevelFromXp(xp: number) {

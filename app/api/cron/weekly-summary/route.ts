@@ -53,7 +53,7 @@ export async function GET(request: Request) {
         type: "weekly_summary",
         title: "Weekly summary delivered",
         message: `You logged ${summary.minutes} active minutes this week with ${summary.quizzes} quiz attempt(s).`,
-        actionUrl: "/progress"
+        actionUrl: "/dashboard/track"
       });
       sent += 1;
     } catch (error) {

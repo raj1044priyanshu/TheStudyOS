@@ -6,6 +6,8 @@ const UserSchema = new Schema(
     name: { type: String, required: true },
     image: { type: String, default: null },
     googleId: { type: String, default: null },
+    role: { type: String, enum: ["student", "admin"], default: "student", index: true },
+    status: { type: String, enum: ["active", "suspended"], default: "active", index: true },
     streak: { type: Number, default: 0 },
     streakLastActivityAt: { type: Date, default: null },
     streakBreakPending: { type: Boolean, default: false },
@@ -24,7 +26,29 @@ const UserSchema = new Schema(
     level: { type: Number, default: 1 },
     lastLevelUpAt: { type: Date, default: null },
     usedFeatures: { type: [String], default: [] },
+    // Added for Feature Onboarding: onboardingCompleted
     onboardingCompleted: { type: Boolean, default: false },
+    // Added for Feature Onboarding: onboardingStep
+    onboardingStep: { type: Number, default: 0 },
+    // Added for Feature Onboarding: studyProfile
+    studyProfile: {
+      class: { type: String, default: "" },
+      board: { type: String, default: "" },
+      stream: {
+        type: String,
+        enum: ["Science", "Commerce", "Humanities", "Other", ""],
+        default: ""
+      },
+      subjects: { type: [String], default: [] },
+      examGoal: { type: String, default: "" },
+      studyHoursPerDay: { type: Number, default: 0 },
+      weakAreas: { type: [String], default: [] },
+      studyStyle: {
+        type: String,
+        enum: ["visual", "reading", "practice", "mixed", ""],
+        default: ""
+      }
+    },
     isTourShown: { type: Boolean, default: false },
     welcomeScreenSeen: { type: Boolean, default: false },
     notificationPreferences: {

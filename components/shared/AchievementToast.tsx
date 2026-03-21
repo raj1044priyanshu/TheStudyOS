@@ -1,5 +1,7 @@
 "use client";
 
+import { IconTrophy } from "@tabler/icons-react";
+
 interface AchievementToastProps {
   icon: string;
   name: string;
@@ -8,6 +10,8 @@ interface AchievementToastProps {
 }
 
 export function AchievementToast({ icon, name, xp, color }: AchievementToastProps) {
+  const displayIcon = icon.trim();
+
   return (
     <div className="glass-card min-w-[280px] max-w-sm rounded-[24px] border border-[color:var(--panel-border)] p-4 shadow-[var(--glass-shadow-deep)]">
       <div className="flex items-center gap-3">
@@ -15,7 +19,7 @@ export function AchievementToast({ icon, name, xp, color }: AchievementToastProp
           className="flex h-14 w-14 items-center justify-center rounded-[20px] text-[1.75rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
           style={{ backgroundColor: `${color}22`, color }}
         >
-          {icon}
+          {displayIcon ? <span aria-hidden="true">{displayIcon}</span> : <IconTrophy className="h-7 w-7" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Achievement Unlocked!</p>

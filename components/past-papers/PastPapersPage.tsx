@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import toast from "react-hot-toast";
 import Link from "next/link";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { SUBJECTS } from "@/lib/constants";
+import { getHubHref } from "@/lib/hubs";
 
 interface PastPaperRecord {
   _id: string;
@@ -40,7 +41,7 @@ export function PastPapersPage() {
   const [tab, setTab] = useState<"analysis" | "predicted" | "questions" | "practice">("analysis");
   const [questionFilter, setQuestionFilter] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const response = await fetch("/api/past-papers", { cache: "no-store" });
     const data = await response.json();
     if (response.ok) {
@@ -49,11 +50,11 @@ export function PastPapersPage() {
         setSelectedPaper(data.papers[0]);
       }
     }
-  }
+  }, [selectedPaper]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const filteredQuestions = useMemo(() => {
     return (selectedPaper?.questions ?? []).filter((question) => {
@@ -131,7 +132,7 @@ export function PastPapersPage() {
       <div className="space-y-5">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Pattern Analysis</p>
-          <h2 className="mt-2 font-headline text-4xl tracking-[-0.04em] text-[var(--foreground)] sm:text-6xl">Past Papers</h2>
+          <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.04em] text-[var(--foreground)]">Past Papers</h2>
           <p className="mt-2 max-w-2xl text-base leading-7 text-[var(--muted-foreground)]">
             Upload a paper, break it into topic frequency and question styles, then generate follow-up practice questions in the same spirit.
           </p>
@@ -143,10 +144,10 @@ export function PastPapersPage() {
           <>
             <div className="glass-card flex flex-wrap gap-2 p-4">
               {[
-                ["analysis", "📊 Topic Analysis"],
-                ["predicted", "🎯 Predicted Topics"],
-                ["questions", "📋 All Questions"],
-                ["practice", "✏️ Practice Questions"]
+                ["analysis", "Topic Analysis"],
+                ["predicted", "Predicted Topics"],
+                ["questions", "All Questions"],
+                ["practice", "Practice Questions"]
               ].map(([key, label]) => (
                 <button
                   key={key}
@@ -196,8 +197,11 @@ export function PastPapersPage() {
                         <div className="h-full rounded-full bg-[#34D399]" style={{ width: `${topic.confidence}%` }} />
                       </div>
                       <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">{topic.reason}</p>
-                      <Link href={`/notes?topic=${encodeURIComponent(topic.topic)}&subject=${encodeURIComponent(selectedPaper.subject)}`} className="mt-4 inline-flex text-sm font-medium text-[#7B6CF6]">
-                        📝 Generate Notes for This Topic
+                      <Link
+                        href={`${getHubHref("study", "notes")}&topic=${encodeURIComponent(topic.topic)}&subject=${encodeURIComponent(selectedPaper.subject)}`}
+                        className="mt-4 inline-flex text-sm font-medium text-[#7B6CF6]"
+                      >
+                        Generate Notes for This Topic
                       </Link>
                     </div>
                   ))}

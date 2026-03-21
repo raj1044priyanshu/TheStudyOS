@@ -1,3 +1,5 @@
+import type { ComponentType } from "react";
+
 export type SubjectOption =
   | "Mathematics"
   | "Physics"
@@ -8,6 +10,11 @@ export type SubjectOption =
   | "English"
   | "Computer Science"
   | "Economics"
+  | "Political Science"
+  | "Accountancy"
+  | "Business Studies"
+  | "Psychology"
+  | "Sociology"
   | "Other";
 
 export type DifficultyLevel = "easy" | "medium" | "hard";
@@ -26,6 +33,39 @@ export type ExamQuestionType = "mcq" | "short" | "long" | "numerical";
 export type StudyRoomTimerAction = "start" | "pause" | "reset";
 export type StudyRoomQuizStatus = "waiting" | "live" | "complete";
 export type FormulaQuizCount = 5 | 10 | 15 | 20;
+export type StudyStyle = "visual" | "reading" | "practice" | "mixed";
+export type StudyStream = "Science" | "Commerce" | "Humanities" | "Other";
+export type UserRole = "student" | "admin";
+export type UserStatus = "active" | "suspended";
+export type FeedbackCategory = "general" | "bug" | "feature_request" | "content" | "design" | "performance" | "support" | "other";
+export type FeedbackStatus = "open" | "in_review" | "resolved" | "ignored";
+export type FeedbackPriority = "low" | "medium" | "high" | "urgent";
+export type AppErrorSource = "server" | "client" | "render" | "unhandled_rejection";
+export type AppErrorSeverity = "info" | "warning" | "error" | "fatal";
+export type AppErrorStatus = "open" | "acknowledged" | "resolved" | "ignored";
+export type AdminIssueKind = "error_log" | "bug_feedback";
+export type TourPageName = "dashboard" | "plan" | "study" | "test" | "revise" | "track" | "noteViewer";
+export type StudyWorkflowPhase = "today" | "plan" | "study" | "test" | "revise-track" | "more";
+export type HubPhase = "plan" | "study" | "test" | "revise" | "track";
+export type PlanHubTool = "planner" | "exams" | "daily-brief";
+export type StudyHubTool = "notes" | "doubts" | "focus-room" | "videos" | "scanner";
+export type TestHubTool = "quiz" | "flashcards" | "teach-me" | "evaluator" | "past-papers";
+export type ReviseHubTool = "revision-queue" | "formula-sheet" | "mind-maps" | "knowledge-graph";
+export type HubToolId = PlanHubTool | StudyHubTool | TestHubTool | ReviseHubTool;
+export type PlannerPrefillSource = "manual" | "autopsy" | "exam" | "upcoming-exams" | "assistant";
+export type PlannerCheckpointStatus = "not_started" | "studied" | "checkpoint_required" | "passed" | "revise_again";
+export type PlannerCheckpointQuestionType = "objective" | "fill_blank" | "short" | "long" | "numerical";
+export type ContextualHintId =
+  | "notes_no_quiz"
+  | "quiz_no_autopsy"
+  | "revision_overdue"
+  | "exam_approaching_no_plan"
+  | "formula_sheet_empty"
+  | "teach_me_after_quiz_fail"
+  | "scanner_exists"
+  | "focus_room_reminder"
+  | "knowledge_graph_ready"
+  | "group_room_available";
 
 export type LegacyAchievementType =
   | "first_note"
@@ -79,6 +119,18 @@ export interface DoubtMessage {
   inputMode?: "text" | "voice";
 }
 
+export interface AdminIssueSummary {
+  kind: AdminIssueKind;
+  id: string;
+  title: string;
+  status: AppErrorStatus | FeedbackStatus;
+  severityOrPriority: string;
+  location: string;
+  userId?: string | null;
+  userEmail?: string;
+  updatedAt: string;
+}
+
 export interface NoteSummary {
   _id: string;
   title: string;
@@ -107,6 +159,12 @@ export interface StudyTask {
   duration: number;
   type: PlannerTaskType;
   completed?: boolean;
+  examId?: string | null;
+  examName?: string | null;
+  chapter?: string | null;
+  checkpointStatus?: PlannerCheckpointStatus;
+  checkpointId?: string | null;
+  checkpointScore?: number | null;
 }
 
 export interface StudyPlanDay {
@@ -134,7 +192,77 @@ export interface PlannerSummary {
 }
 
 export interface PlannerDetails extends PlannerSummary {
+  exams?: PlannerConfirmedExamInput[];
+  studyContext?: PlannerStudyContext | null;
   generatedPlan: StudyPlanDay[];
+}
+
+export interface PlannerGenerationSubjectInput {
+  name: string;
+  examDate: string;
+  importance: number;
+}
+
+export interface PlannerStudyContext {
+  className: string;
+  board: string;
+  stream?: StudyStream | "";
+  studyHoursPerDay: number;
+  startDate: string;
+}
+
+export interface PlannerConfirmedExamInput {
+  examId?: string;
+  subject: string;
+  examName: string;
+  examDate: string;
+  board?: string | null;
+  chapters: string[];
+  source: "manual" | "saved" | "official" | "saved+official";
+  notes?: string;
+  officialExamDate?: string | null;
+}
+
+export interface PlannerGenerationInput {
+  name?: string;
+  subjects?: PlannerGenerationSubjectInput[];
+  hoursPerDay: number;
+  startDate: string;
+  focusTopics?: string[];
+  prefillSource?: PlannerPrefillSource;
+  studyContext?: PlannerStudyContext;
+  confirmedExams?: PlannerConfirmedExamInput[];
+}
+
+export interface PlannerCheckpointQuestion {
+  prompt: string;
+  type: PlannerCheckpointQuestionType;
+  options?: string[];
+  answerKey?: string;
+  rubric?: string;
+  maxMarks: number;
+}
+
+export interface PlannerCheckpointQuestionResult {
+  questionIndex: number;
+  obtainedMarks: number;
+  maxMarks: number;
+  feedback: string;
+}
+
+export interface PlannerCheckpointSummary {
+  _id: string;
+  planId: string;
+  date: string;
+  taskIndex: number;
+  subject: string;
+  chapter: string;
+  questions: PlannerCheckpointQuestion[];
+  score: number;
+  passed: boolean;
+  status: "generated" | "submitted";
+  feedback: string[];
+  questionResults: PlannerCheckpointQuestionResult[];
 }
 
 export interface QuizQuestion {
@@ -259,6 +387,28 @@ export interface UserStats {
 export interface ProgressChartPoint {
   date: string;
   score: number;
+}
+
+export interface HubStatChip {
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+}
+
+export interface HubTabConfig {
+  id: HubToolId;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  component: React.ReactNode;
+}
+
+export interface HubLayoutProps {
+  phase: HubPhase;
+  title: string;
+  subtitle: string;
+  stats: HubStatChip[];
+  tabs?: HubTabConfig[];
+  defaultTab?: HubToolId;
+  children?: React.ReactNode;
 }
 
 export interface SubjectBreakdownPoint {
@@ -507,6 +657,20 @@ export interface StudyRoomLeaderboardEntry {
   streak: number;
 }
 
+export interface StudyRoomWhiteboardPoint {
+  x: number;
+  y: number;
+}
+
+export interface StudyRoomWhiteboardStroke {
+  strokeId: string;
+  authorUserId: string;
+  color: string;
+  width: number;
+  points: StudyRoomWhiteboardPoint[];
+  createdAt: string;
+}
+
 export interface StudyRoomPayload {
   _id: string;
   roomCode: string;
@@ -517,6 +681,7 @@ export interface StudyRoomPayload {
   timerDuration: number;
   timerStartedAt?: string | null;
   timerPaused: boolean;
+  whiteboardStrokes: StudyRoomWhiteboardStroke[];
   createdAt: string;
   expiresAt: string;
 }
@@ -657,10 +822,63 @@ export interface LevelDefinition {
   maxXp: number | null;
   level: number;
   name: "Novice" | "Scholar" | "Genius" | "Legend";
-  icon: "🌱" | "📖" | "💡" | "👑";
+  icon: string;
 }
 
 export interface CachedEnvelope<T> {
   cachedAt: string;
   data: T;
+}
+
+export interface StudyProfile {
+  class: string;
+  board: string;
+  stream?: StudyStream | "";
+  subjects: string[];
+  examGoal: string;
+  studyHoursPerDay: number;
+  weakAreas: string[];
+  studyStyle: StudyStyle;
+}
+
+export interface OnboardingStepPayload {
+  class?: string;
+  board?: string;
+  stream?: StudyStream | "";
+  subjects?: string[];
+  examGoal?: string;
+  studyHoursPerDay?: number;
+  weakAreas?: string[];
+  studyStyle?: StudyStyle;
+}
+
+export interface OnboardingSaveStepRequest {
+  step: number;
+  data: OnboardingStepPayload;
+}
+
+export interface OnboardingCompleteResponse {
+  redirectTo: string;
+}
+
+export interface StudyWorkflowFeatureGuide {
+  name: string;
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  description: string;
+  whenToUse: string;
+}
+
+export interface HelpGoalAction {
+  key: "exam_3_days" | "dont_know_where_to_start" | "study_right_now" | "revise_everything";
+  title: string;
+  steps: string[];
+}
+
+export interface NextStepSuggestion {
+  icon: string;
+  title: string;
+  description: string;
+  href?: string;
+  action?: "schedule_revision" | "convert_scan" | "improve_answer" | "open_practice";
 }

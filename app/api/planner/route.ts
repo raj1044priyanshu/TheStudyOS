@@ -5,10 +5,13 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit, parseJsonString } from "@/lib/api";
 import { generateContent } from "@/lib/gemini";
 import { StudyPlanModel } from "@/models/StudyPlan";
+import { ExamModel } from "@/models/Exam";
 import { evaluateAchievements, logActivity } from "@/lib/progress";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { UserModel } from "@/models/User";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
+import { buildChapterPlan } from "@/lib/planner-assistant";
+import { normalizeTopicList } from "@/lib/planner-utils";
 
 const subjectSchema = z.object({
   name: z.string().min(2),
@@ -16,18 +19,43 @@ const subjectSchema = z.object({
   importance: z.number().min(1).max(5)
 });
 
+const confirmedExamSchema = z.object({
+  examId: z.string().optional(),
+  subject: z.string().min(2),
+  examName: z.string().min(2),
+  examDate: z.string().min(1),
+  board: z.string().optional().nullable(),
+  chapters: z.array(z.string().min(1)).max(64),
+  source: z.enum(["manual", "saved", "official", "saved+official"]),
+  notes: z.string().optional(),
+  officialExamDate: z.string().optional().nullable()
+});
+
+const studyContextSchema = z.object({
+  className: z.string().min(2),
+  board: z.string().min(2),
+  stream: z.enum(["Science", "Commerce", "Humanities", "Other"]).optional().or(z.literal("")),
+  studyHoursPerDay: z.number().min(1).max(16),
+  startDate: z.string().min(1)
+});
+
 const postSchema = z.object({
   name: z.string().min(2).max(80).optional(),
-  subjects: z.array(subjectSchema).min(1),
+  subjects: z.array(subjectSchema).min(1).optional(),
   hoursPerDay: z.number().min(1).max(16),
-  startDate: z.string()
+  startDate: z.string(),
+  focusTopics: z.array(z.string().trim().min(2).max(80)).max(12).optional(),
+  prefillSource: z.enum(["manual", "autopsy", "exam", "upcoming-exams", "assistant"]).optional(),
+  studyContext: studyContextSchema.optional(),
+  confirmedExams: z.array(confirmedExamSchema).max(24).optional()
 });
 
 const patchSchema = z.object({
   planId: z.string(),
   date: z.string(),
   taskIndex: z.number(),
-  completed: z.boolean()
+  completed: z.boolean().optional(),
+  action: z.enum(["toggle-complete", "mark-studied"]).optional()
 });
 
 const deleteSchema = z.object({
@@ -40,6 +68,12 @@ type PlannerTask = {
   duration: number;
   type: "study" | "revision" | "practice" | "break";
   completed?: boolean;
+  examId?: string | null;
+  examName?: string | null;
+  chapter?: string | null;
+  checkpointStatus?: "not_started" | "studied" | "checkpoint_required" | "passed" | "revise_again";
+  checkpointId?: string | null;
+  checkpointScore?: number | null;
 };
 
 type PlannerDay = {
@@ -53,11 +87,29 @@ interface PlannerDoc {
   examDate?: Date;
   startDate?: Date;
   hoursPerDay?: number;
+  studyContext?: {
+    className?: string;
+    board?: string;
+    stream?: string;
+    studyHoursPerDay?: number;
+    startDate?: string;
+  } | null;
   subjects: {
     name: string;
     hoursPerDay: number;
     priority: number;
   }[];
+  exams?: Array<{
+    examId?: string | null;
+    subject: string;
+    examName: string;
+    examDate: string;
+    board?: string | null;
+    chapters: string[];
+    source: string;
+    notes?: string;
+    officialExamDate?: string | null;
+  }>;
   generatedPlan: PlannerDay[];
   createdAt?: Date;
 }
@@ -103,17 +155,42 @@ function normalizeGeneratedPlan(plan: unknown): PlannerDay[] {
     const tasks: PlannerTask[] = [];
     for (const task of rawTasks) {
       if (!task || typeof task !== "object") continue;
-      const typedTask = task as { subject?: unknown; topic?: unknown; duration?: unknown; type?: unknown };
+      const typedTask = task as {
+        subject?: unknown;
+        topic?: unknown;
+        duration?: unknown;
+        type?: unknown;
+        completed?: unknown;
+        examId?: unknown;
+        examName?: unknown;
+        chapter?: unknown;
+        checkpointStatus?: unknown;
+        checkpointId?: unknown;
+        checkpointScore?: unknown;
+      };
       const taskType = normalizeTaskType(typedTask.type);
       const subject = String(typedTask.subject ?? "").trim() || (taskType === "break" ? "Break" : "General");
       const topic = String(typedTask.topic ?? "").trim() || (taskType === "break" ? "Short break" : "Focused session");
+      const checkpointStatus = (() => {
+        const raw = String(typedTask.checkpointStatus ?? "").trim();
+        if (["not_started", "studied", "checkpoint_required", "passed", "revise_again"].includes(raw)) {
+          return raw as PlannerTask["checkpointStatus"];
+        }
+        return taskType === "break" ? "passed" : "not_started";
+      })();
 
       tasks.push({
         subject,
         topic,
         duration: normalizeDuration(typedTask.duration, taskType),
         type: taskType,
-        completed: false
+        completed: Boolean(taskType === "break" ? typedTask.completed ?? false : typedTask.completed ?? false),
+        examId: typeof typedTask.examId === "string" ? typedTask.examId : null,
+        examName: typeof typedTask.examName === "string" ? typedTask.examName : null,
+        chapter: typeof typedTask.chapter === "string" ? typedTask.chapter : topic,
+        checkpointStatus,
+        checkpointId: typeof typedTask.checkpointId === "string" ? typedTask.checkpointId : null,
+        checkpointScore: typeof typedTask.checkpointScore === "number" ? typedTask.checkpointScore : null
       });
     }
 
@@ -143,6 +220,8 @@ function plannerSummary(plan: PlannerDoc) {
     examDate: plan.examDate?.toISOString() ?? null,
     hoursPerDay: plan.hoursPerDay ?? 1,
     subjects: plan.subjects,
+    exams: plan.exams ?? [],
+    studyContext: plan.studyContext ?? null,
     totalDays: plan.generatedPlan.length,
     totalTasks,
     completedTasks,
@@ -200,42 +279,106 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: body.error.flatten() }, { status: 400 });
   }
+  if (!(body.data.subjects?.length || body.data.confirmedExams?.length)) {
+    return NextResponse.json({ error: "At least one subject or confirmed exam is required" }, { status: 400 });
+  }
 
-  const { name, subjects, hoursPerDay, startDate } = body.data;
-  const prompt = `Create a detailed daily study schedule for a student.
+  const { name, subjects = [], hoursPerDay, startDate, focusTopics = [], studyContext, confirmedExams = [] } = body.data;
+  const normalizedFocusTopics = [...new Set(focusTopics.map((topic) => topic.trim()).filter(Boolean))].slice(0, 12);
+  const normalizedConfirmedExams =
+    confirmedExams.length > 0
+      ? confirmedExams.map((exam) => ({
+          ...exam,
+          chapters: normalizeTopicList(exam.chapters)
+        }))
+      : [];
+
+  const generatedPlan =
+    normalizedConfirmedExams.length > 0
+      ? buildChapterPlan({
+          confirmedExams: normalizedConfirmedExams,
+          focusTopics: normalizedFocusTopics,
+          hoursPerDay,
+          startDate
+        })
+      : (() => {
+          const prompt = `Create a detailed daily study schedule for a student.
 Subjects and exam dates: ${JSON.stringify(subjects)}.
 Available hours per day: ${hoursPerDay}.
 Start date: ${startDate}.
+Focus topics to prioritize: ${normalizedFocusTopics.length ? normalizedFocusTopics.join(", ") : "None"}.
 Rules:
 Prioritize subjects with sooner exam dates
 Give harder/important subjects more time
 Include revision days before each exam
 Alternate subjects to avoid fatigue
 Include short breaks
+If focus topics are provided, make sure they appear as specific task topics throughout the plan.
 Respond in this EXACT JSON format:
 { "plan": [{ "date": "YYYY-MM-DD", "tasks": [{"subject": "", "topic": "", "duration": 60, "type": "study|revision|practice|break"}] }] }`;
 
-  const response = await generateContent(prompt);
-  const json = parseJsonString(response) as { plan?: unknown };
-  const generatedPlan = normalizeGeneratedPlan(json.plan);
+          return prompt;
+        })();
+
+  const legacyGeneratedPlan = Array.isArray(generatedPlan)
+    ? generatedPlan
+    : normalizeGeneratedPlan(parseJsonString(await generateContent(generatedPlan))?.plan);
+
+  const effectiveSubjects =
+    normalizedConfirmedExams.length > 0
+      ? normalizedConfirmedExams.map((exam, index) => ({
+          name: exam.subject,
+          examDate: exam.examDate,
+          importance: Math.max(1, Math.min(5, 5 - index))
+        }))
+      : subjects;
 
   await connectToDatabase();
   const plan = (await StudyPlanModel.create({
     userId: authResult.userId,
-    name: name?.trim() || `${subjects[0].name} Plan`,
-    examDate: subjects
+    name: name?.trim() || `${effectiveSubjects[0]?.name ?? "Study"} Plan`,
+    examDate: effectiveSubjects
       .map((subject) => new Date(subject.examDate))
       .filter((date) => !Number.isNaN(date.valueOf()))
       .sort((a, b) => a.getTime() - b.getTime())[0],
     startDate: new Date(startDate),
     hoursPerDay,
-    subjects: subjects.map((item) => ({
+    studyContext: studyContext
+      ? {
+          className: studyContext.className,
+          board: studyContext.board,
+          stream: studyContext.stream ?? "",
+          studyHoursPerDay: studyContext.studyHoursPerDay,
+          startDate: studyContext.startDate
+        }
+      : undefined,
+    subjects: effectiveSubjects.map((item) => ({
       name: item.name,
       hoursPerDay,
       priority: item.importance
     })),
-    generatedPlan
+    exams: normalizedConfirmedExams,
+    generatedPlan: legacyGeneratedPlan
   })) as unknown as PlannerDoc;
+
+  if (normalizedConfirmedExams.length > 0) {
+    await Promise.all(
+      normalizedConfirmedExams
+        .filter((exam) => exam.examId)
+        .map((exam) =>
+          ExamModel.updateOne(
+            { _id: exam.examId, userId: authResult.userId },
+            {
+              $set: {
+                board: exam.board ?? studyContext?.board ?? null,
+                examDate: new Date(exam.examDate),
+                syllabus: exam.chapters
+              }
+            }
+          )
+        )
+    );
+  }
 
   const plannerOwner = await UserModel.findById(authResult.userId).select("streak level").lean();
   const newAchievements = plannerOwner
@@ -279,7 +422,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { planId, date, taskIndex, completed } = parsed.data;
+  const { planId, date, taskIndex, completed = false, action = "toggle-complete" } = parsed.data;
 
   await connectToDatabase();
   const plan = await StudyPlanModel.findOne({ _id: planId, userId: authResult.userId });
@@ -288,19 +431,42 @@ export async function PATCH(request: Request) {
   }
 
   const day = plan.generatedPlan.find(
-    (item: { date: string; tasks: Array<{ completed?: boolean; subject: string; duration: number }> }) =>
-      item.date === date
+    (
+      item: {
+        date: string;
+        tasks: Array<{
+          completed?: boolean;
+          subject: string;
+          duration: number;
+          type?: string;
+          checkpointStatus?: string;
+        }>;
+      }
+    ) => item.date === date
   );
   if (!day || !day.tasks[taskIndex]) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
-  day.tasks[taskIndex].completed = completed;
+  const task = day.tasks[taskIndex];
+
+  if (action === "mark-studied") {
+    if (task.type === "break") {
+      task.completed = true;
+      task.checkpointStatus = "passed";
+    } else {
+      task.checkpointStatus = "checkpoint_required";
+    }
+  } else {
+    if (completed && task.type !== "break" && task.checkpointStatus !== "passed") {
+      return NextResponse.json({ error: "Pass the chapter checkpoint before marking this complete" }, { status: 400 });
+    }
+    task.completed = completed;
+  }
   await plan.save();
 
   let events = null;
-  if (completed) {
-    const task = day.tasks[taskIndex];
+  if (action === "toggle-complete" && completed) {
     events = await logActivity({
       userId: authResult.userId,
       subject: task.subject,
@@ -339,7 +505,7 @@ export async function PATCH(request: Request) {
         type: "system",
         title: `${events.streakMilestone.milestone}-day streak reached`,
         message: `You extended your streak to ${events.streakMilestone.milestone} days.`,
-        actionUrl: "/progress"
+        actionUrl: "/dashboard/track"
       }).catch((error) => {
         console.error("Failed to create streak-milestone notification for planner event", error);
       });

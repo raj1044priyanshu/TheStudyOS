@@ -5,14 +5,16 @@ import { useEffect, useMemo, useState } from "react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NextStepCard } from "@/components/shared/NextStepCard";
 import type { QuizAutopsy } from "@/types";
+import { getHubHref } from "@/lib/hubs";
 
 const MISTAKE_STYLE = {
-  misconception: { label: "🧠 Misconception", className: "bg-[#A78BFA]/20 text-[#6D28D9]" },
-  silly_error: { label: "✏️ Silly Error", className: "bg-[#FCD34D]/20 text-[#A16207]" },
-  knowledge_gap: { label: "❓ Knowledge Gap", className: "bg-[#FCA5A5]/20 text-[#B91C1C]" },
-  guessed: { label: "🎲 Guessed", className: "bg-slate-300/20 text-slate-700 dark:text-slate-200" },
-  time_pressure: { label: "⏱ Time Pressure", className: "bg-[#38BDF8]/20 text-[#0369A1]" }
+  misconception: { label: "Misconception", className: "bg-[#A78BFA]/20 text-[#6D28D9]" },
+  silly_error: { label: "Silly Error", className: "bg-[#FCD34D]/20 text-[#A16207]" },
+  knowledge_gap: { label: "Knowledge Gap", className: "bg-[#FCA5A5]/20 text-[#B91C1C]" },
+  guessed: { label: "Guessed", className: "bg-slate-300/20 text-slate-700 dark:text-slate-200" },
+  time_pressure: { label: "Time Pressure", className: "bg-[#38BDF8]/20 text-[#0369A1]" }
 } as const;
 
 interface QuizPayload {
@@ -104,16 +106,15 @@ export function AutopsyReport({ quizId }: { quizId: string }) {
   if (celebration) {
     return (
       <div className="glass-card mx-auto max-w-4xl p-10 text-center">
-        <p className="text-6xl">🎉</p>
         <h2 className="mt-4 font-headline text-5xl tracking-[-0.04em] text-[var(--foreground)]">Perfect score</h2>
         <p className="mt-3 text-base leading-7 text-[var(--muted-foreground)]">
           You scored 100% on {quiz.topic}. No autopsy needed because nothing went wrong.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          <Link href="/quiz">
+          <Link href={getHubHref("test", "quiz")}>
             <Button>Take another quiz</Button>
           </Link>
-          <Link href={`/notes?subject=${encodeURIComponent(quiz.subject)}&topic=${encodeURIComponent(quiz.topic)}`}>
+          <Link href={`${getHubHref("study", "notes")}&subject=${encodeURIComponent(quiz.subject)}&topic=${encodeURIComponent(quiz.topic)}`}>
             <Button variant="outline">Review notes</Button>
           </Link>
         </div>
@@ -130,10 +131,10 @@ export function AutopsyReport({ quizId }: { quizId: string }) {
   return (
     <div className="space-y-5">
       <section className="glass-card overflow-hidden p-6 md:p-8">
-        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">🔬 Exam Autopsy</p>
-        <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-headline text-4xl tracking-[-0.04em] text-[var(--foreground)] md:text-6xl">{quiz.topic}</h1>
+        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Exam Autopsy</p>
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+        <div>
+            <h1 className="font-headline text-[clamp(2.2rem,6vw,3.8rem)] tracking-[-0.04em] text-[var(--foreground)]">{quiz.topic}</h1>
             <p className="mt-2 text-sm text-[var(--muted-foreground)]">
               {quiz.subject} • {quiz.completedAt ? new Date(quiz.completedAt).toLocaleDateString() : "Recently completed"}
             </p>
@@ -209,11 +210,11 @@ export function AutopsyReport({ quizId }: { quizId: string }) {
               <h3 className="font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">{topic.topic}</h3>
               <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)]">{topic.reason}</p>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Link href={`/notes?subject=${encodeURIComponent(quiz.subject)}&topic=${encodeURIComponent(topic.topic)}`}>
-                  <Button size="sm">📝 Generate Notes</Button>
+                <Link href={`${getHubHref("study", "notes")}&subject=${encodeURIComponent(quiz.subject)}&topic=${encodeURIComponent(topic.topic)}`}>
+                  <Button size="sm">Generate Notes</Button>
                 </Link>
-                <Link href={`/quiz?subject=${encodeURIComponent(quiz.subject)}&topic=${encodeURIComponent(topic.topic)}`}>
-                  <Button size="sm" variant="outline">🧪 Retake Quiz</Button>
+                <Link href={`${getHubHref("test", "quiz")}&subject=${encodeURIComponent(quiz.subject)}&topic=${encodeURIComponent(topic.topic)}`}>
+                  <Button size="sm" variant="outline">Retake Quiz</Button>
                 </Link>
               </div>
             </article>
@@ -225,7 +226,7 @@ export function AutopsyReport({ quizId }: { quizId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Strengths</p>
-            <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">You're strong at</h2>
+            <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">You&apos;re strong at</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             {autopsy.strengthTopics.map((topic) => (
@@ -238,10 +239,29 @@ export function AutopsyReport({ quizId }: { quizId: string }) {
       </section>
 
       <div className="flex justify-end">
-        <Link href={`/planner?weakTopics=${encodeURIComponent(weakTopicQuery)}&subject=${encodeURIComponent(quiz.subject)}`}>
+        <Link
+          href={`${getHubHref("plan", "planner")}&prefill=autopsy&weakTopics=${encodeURIComponent(weakTopicQuery)}&subject=${encodeURIComponent(quiz.subject)}`}
+        >
           <Button>Generate Revision Plan for Weak Topics</Button>
         </Link>
       </div>
+
+      <NextStepCard
+        suggestions={[
+          {
+            icon: "",
+            title: `Generate notes on your weakest topic: ${autopsy.weakTopics[0]?.topic ?? quiz.topic}`,
+            description: "Target the weakest point first so the next quiz looks different.",
+            href: `${getHubHref("study", "notes")}&topic=${encodeURIComponent(autopsy.weakTopics[0]?.topic ?? quiz.topic)}&subject=${encodeURIComponent(quiz.subject)}`
+          },
+          {
+            icon: "",
+            title: "Add weak topics to your study plan",
+            description: "Move this insight into your actual weekly schedule so it gets studied soon.",
+            href: `${getHubHref("plan", "planner")}&prefill=autopsy&weakTopics=${encodeURIComponent(weakTopicQuery)}&subject=${encodeURIComponent(quiz.subject)}`
+          }
+        ]}
+      />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit } from "@/lib/api";
 import { generateContentWithMetadata } from "@/lib/gemini";
-import { analyzeNoteContent } from "@/lib/note-content";
+import { analyzeNoteContent, extractNoteDiagramPlaceholders } from "@/lib/note-content";
 import { NoteModel } from "@/models/Note";
 import { logActivity } from "@/lib/progress";
 import { extractFormulasFromNote, upsertFormulaEntry } from "@/lib/formula-sheet";
@@ -12,6 +12,8 @@ import { scheduleRevisionItem } from "@/lib/revision";
 import { upsertConceptNode } from "@/lib/knowledge-graph";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
+import { generateNoteVisual } from "@/lib/note-visuals";
+import type { NoteVisual } from "@/types";
 
 const createNoteSchema = z.object({
   subject: z.string().min(2),
@@ -154,6 +156,62 @@ async function generateReviewedNote({
   throw new Error("We couldn't generate a reliable note this time. Please try a narrower topic and try again.");
 }
 
+async function generateAndPersistNoteVisuals(note: {
+  _id: Types.ObjectId;
+  subject: string;
+  title: string;
+  content: string;
+  visuals?: Array<NoteVisual & { generatedAt: string | Date }>;
+  save: () => Promise<unknown>;
+}) {
+  const placeholders = extractNoteDiagramPlaceholders(note.content).slice(0, 8);
+  if (!placeholders.length) {
+    return {
+      generated: 0,
+      missing: 0,
+      visuals: [] as NoteVisual[]
+    };
+  }
+
+  const visuals: NoteVisual[] = [];
+  for (const placeholder of placeholders) {
+    try {
+      const visual = await generateNoteVisual({
+        noteId: note._id.toString(),
+        key: placeholder.key,
+        subject: note.subject,
+        title: note.title,
+        description: placeholder.description
+      });
+
+      if (visual) {
+        visuals.push(visual);
+      }
+    } catch (error) {
+      console.error("Failed to generate note visual during note creation", {
+        noteId: note._id.toString(),
+        key: placeholder.key,
+        error
+      });
+    }
+  }
+
+  note.visuals = visuals.map((visual) => ({
+    ...visual,
+    generatedAt: new Date(visual.generatedAt)
+  }));
+
+  if (visuals.length > 0) {
+    await note.save();
+  }
+
+  return {
+    generated: visuals.length,
+    missing: Math.max(placeholders.length - visuals.length, 0),
+    visuals
+  };
+}
+
 export async function GET() {
   const authResult = await requireUser();
   if (authResult.error) {
@@ -239,6 +297,7 @@ export async function POST(request: Request) {
       generationMeta: generated.generationMeta,
       tags: [subject, detailLevel, style]
     });
+    const visuals = await generateAndPersistNoteVisuals(note);
 
     const events = await logActivity({
       userId: authResult.userId,
@@ -308,7 +367,7 @@ export async function POST(request: Request) {
         type: "system",
         title: `${events.streakMilestone.milestone}-day streak reached`,
         message: `You extended your streak to ${events.streakMilestone.milestone} days.`,
-        actionUrl: "/progress"
+        actionUrl: "/dashboard/track"
       }).catch((error) => {
         console.error("Failed to create streak-milestone notification for note event", error);
       });
@@ -330,7 +389,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, note, events });
+    return NextResponse.json({ success: true, note, events, visuals });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Note generation failed";
     return NextResponse.json({ error: message }, { status: 502 });

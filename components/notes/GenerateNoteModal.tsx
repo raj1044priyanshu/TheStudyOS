@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { IconNotebook, IconPencil, IconSparkles, IconWand } from "@tabler/icons-react";
 import { Dialog } from "@/components/ui/dialog";
@@ -14,28 +14,58 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+  initialValues?: Partial<{
+    subject: string;
+    topic: string;
+    class: string;
+    detailLevel: string;
+    style: string;
+  }>;
 }
 
-export function GenerateNoteModal({ open, onClose, onCreated }: Props) {
+const DEFAULT_FORM = {
+  subject: "Mathematics",
+  topic: "",
+  class: "Class 10",
+  detailLevel: "standard",
+  style: "topper"
+};
+
+export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: Props) {
   const [form, setForm] = useState({
-    subject: "Mathematics",
-    topic: "",
-    class: "Class 10",
-    detailLevel: "standard",
-    style: "topper"
+    ...DEFAULT_FORM
   });
   const [loading, setLoading] = useState(false);
   const optionButtonClassName = "min-h-10 max-w-full rounded-full border px-3.5 py-2 text-center text-xs leading-4 transition whitespace-normal";
   const stylePreviewLabel = form.style === "minimal" ? "Minimal notebook style" : form.style === "classic" ? "Classic notebook style" : "Topper's notebook style";
+  const normalizedInitialValues = useMemo(
+    () => ({
+      ...DEFAULT_FORM,
+      ...initialValues
+    }),
+    [initialValues]
+  );
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setForm((current) => ({
+      ...current,
+      ...normalizedInitialValues
+    }));
+  }, [open, normalizedInitialValues]);
 
   function useExample() {
-    setForm({
+    setForm((current) => ({
+      ...current,
       subject: "Biology",
       topic: "Photosynthesis",
       class: "Class 10",
       detailLevel: "standard",
       style: "topper"
-    });
+    }));
   }
 
   async function submit() {
@@ -46,7 +76,7 @@ export function GenerateNoteModal({ open, onClose, onCreated }: Props) {
       body: JSON.stringify(form)
     });
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     setLoading(false);
 
     if (!response.ok) {
@@ -71,7 +101,15 @@ export function GenerateNoteModal({ open, onClose, onCreated }: Props) {
     }
 
     window.dispatchEvent(new CustomEvent("tour:note-generated"));
-    toast.success("Notes generated successfully");
+    if (typeof data.visuals?.generated === "number" && data.visuals.generated > 0) {
+      toast.success(
+        data.visuals.missing > 0
+          ? `Notes generated with ${data.visuals.generated} study visual${data.visuals.generated === 1 ? "" : "s"}.`
+          : "Notes and study visuals generated successfully"
+      );
+    } else {
+      toast.success("Notes generated successfully");
+    }
     onCreated();
     onClose();
   }
@@ -93,7 +131,7 @@ export function GenerateNoteModal({ open, onClose, onCreated }: Props) {
           </Button>
           <Button data-tour-id="notes-generate-submit" onClick={submit} disabled={loading || !form.topic.trim()} className="gap-2">
             <IconWand className="h-4 w-4" />
-            {loading ? "Generating..." : "Generate Note"}
+            {loading ? "Generating Note & Visuals..." : "Generate Note"}
           </Button>
         </div>
       }
@@ -213,7 +251,7 @@ export function GenerateNoteModal({ open, onClose, onCreated }: Props) {
                 </div>
                 <p className="text-note-secondary pt-1 text-lg">
                   <IconPencil className="mr-1 inline h-4 w-4" />
-                  Preparing {stylePreviewLabel.toLowerCase()}...
+                  Preparing {stylePreviewLabel.toLowerCase()} and study visuals...
                 </p>
               </div>
             ) : (

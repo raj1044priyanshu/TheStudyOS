@@ -1,5 +1,5 @@
-import { StudyRoomPage } from "@/components/study-room/StudyRoomPage";
+import { redirect } from "next/navigation";
 
 export default function StudyRoomRoute() {
-  return <StudyRoomPage />;
+  redirect("/dashboard/study-room");
 }

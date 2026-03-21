@@ -152,7 +152,7 @@ export function SimplifierSlider({ noteId, subject, topic }: SimplifierSliderPro
             void applySimplification();
           }}
         >
-          🔍 Simplify
+          Simplify
         </button>
       ) : null}
 

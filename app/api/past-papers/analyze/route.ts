@@ -1,4 +1,3 @@
-import { PDFParse } from "pdf-parse";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectToDatabase } from "@/lib/mongodb";
@@ -42,6 +41,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const { PDFParse } = await import("pdf-parse");
     const parser = new PDFParse({ data: buffer });
     const extracted = await parser.getText();
     await parser.destroy();

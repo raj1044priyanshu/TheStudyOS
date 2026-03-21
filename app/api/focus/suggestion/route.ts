@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { requireUser, routeError } from "@/lib/api";
 import { redis } from "@/lib/ratelimit";

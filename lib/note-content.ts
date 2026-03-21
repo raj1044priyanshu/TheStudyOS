@@ -135,11 +135,11 @@ function sanitizeBlockValue(tag: NoteBlockTag, rawValue: string) {
   let value = rawValue.replace(BLOCK_MARKER_REGEX, " ");
   value = normalizeText(value);
   value = value.replace(/[▮□■▪]/g, " ");
-  value = value.replace(/^\s*✂\s*/, "");
+  value = value.replace(/^\s*\u2702\s*/, "");
   value = normalizeText(value);
 
   if (tag === "STAR_POINT" || tag === "ARROW_POINT" || tag === "CHECK_POINT" || tag === "BULLET_POINT") {
-    value = value.replace(/^[★✓•→↝\-\s]+/, "");
+    value = value.replace(/^[\u2605\u2713\u2022\u2192\u219D\-\s]+/, "");
   }
 
   return value;
@@ -166,10 +166,10 @@ function inferTagFromSymbols(line: string): NoteBlockTag | null {
     return null;
   }
 
-  if (/^[★⭐]/.test(clean)) return "STAR_POINT";
-  if (/^[↝→]/.test(clean)) return "ARROW_POINT";
-  if (/^[✓✔]/.test(clean)) return "CHECK_POINT";
-  if (/^[•\-]/.test(clean)) return "BULLET_POINT";
+  if (/^[\u2605\u2B50]/.test(clean)) return "STAR_POINT";
+  if (/^[\u219D\u2192]/.test(clean)) return "ARROW_POINT";
+  if (/^[\u2713\u2714]/.test(clean)) return "CHECK_POINT";
+  if (/^[\u2022\-]/.test(clean)) return "BULLET_POINT";
   return null;
 }
 

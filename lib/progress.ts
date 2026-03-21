@@ -5,7 +5,6 @@ import { AchievementModel } from "@/models/Achievement";
 import { ExamModel } from "@/models/Exam";
 import { FocusSessionModel } from "@/models/FocusSession";
 import { FormulaSheetModel } from "@/models/FormulaSheet";
-import { NoteModel } from "@/models/Note";
 import { ProgressModel } from "@/models/Progress";
 import { QuizModel } from "@/models/Quiz";
 import { ScanResultModel } from "@/models/ScanResult";
@@ -31,46 +30,46 @@ const REQUIRED_FEATURES_FOR_EXPLORER = [
 ] as const;
 
 export const ACHIEVEMENTS: Record<AchievementType, AchievementDefinition> = {
-  first_note: { id: "first_note", name: "Note Taker", icon: "📝", desc: "Generated your first note", color: "#818CF8", xp: 20 },
-  five_notes: { id: "five_notes", name: "Note Builder", icon: "📝", desc: "Generated 5 notes", color: "#818CF8", xp: 25 },
-  ten_notes: { id: "ten_notes", name: "Study Scribe", icon: "✍️", desc: "10 notes generated", color: "#818CF8", xp: 35 },
-  twentyfive_notes: { id: "twentyfive_notes", name: "Revision Library", icon: "📚", desc: "Generated 25 notes", color: "#6C63FF", xp: 45 },
-  note_10: { id: "note_10", name: "Study Scribe", icon: "✍️", desc: "10 notes generated", color: "#818CF8", xp: 35 },
-  note_50: { id: "note_50", name: "Encyclopedia", icon: "📚", desc: "50 notes generated", color: "#6C63FF", xp: 60 },
-  first_quiz: { id: "first_quiz", name: "Quiz Starter", icon: "🧪", desc: "Completed your first quiz", color: "#38BDF8", xp: 20 },
-  five_quizzes: { id: "five_quizzes", name: "Quiz Runner", icon: "🧪", desc: "Completed 5 quizzes", color: "#38BDF8", xp: 30 },
-  ten_quizzes: { id: "ten_quizzes", name: "Quiz Marathon", icon: "🎯", desc: "Completed 10 quizzes", color: "#38BDF8", xp: 40 },
-  quiz_10: { id: "quiz_10", name: "Quiz Master", icon: "🎯", desc: "10 quizzes completed", color: "#38BDF8", xp: 40 },
-  quiz_master_80: { id: "quiz_master_80", name: "Quiz Master", icon: "🎯", desc: "Scored 80% or above in a quiz", color: "#38BDF8", xp: 25 },
-  quiz_master_90: { id: "quiz_master_90", name: "Quiz Ace", icon: "💯", desc: "Scored 90% or above in a quiz", color: "#FCD34D", xp: 30 },
-  quiz_perfect: { id: "quiz_perfect", name: "Perfectionist", icon: "💯", desc: "Scored 100% on a quiz", color: "#FCD34D", xp: 30 },
-  first_plan: { id: "first_plan", name: "First Plan", icon: "📅", desc: "Created your first study plan", color: "#818CF8", xp: 20 },
-  first_task_completed: { id: "first_task_completed", name: "Task Ticked Off", icon: "✅", desc: "Completed your first planner task", color: "#818CF8", xp: 10 },
-  ten_tasks_completed: { id: "ten_tasks_completed", name: "Task Finisher", icon: "✅", desc: "Completed 10 planner tasks", color: "#818CF8", xp: 20 },
-  fifty_tasks_completed: { id: "fifty_tasks_completed", name: "Momentum Builder", icon: "✅", desc: "Completed 50 planner tasks", color: "#818CF8", xp: 35 },
-  streak_3: { id: "streak_3", name: "Getting Warm", icon: "🔥", desc: "3-day study streak", color: "#F97316", xp: 20 },
-  streak_7: { id: "streak_7", name: "On Fire", icon: "🔥🔥", desc: "7-day study streak", color: "#EF4444", xp: 35 },
-  streak_14: { id: "streak_14", name: "14 Day Streak", icon: "🔥", desc: "Studied 14 days in a row", color: "#F97316", xp: 40 },
-  streak_30: { id: "streak_30", name: "Unstoppable", icon: "⚡", desc: "30-day study streak", color: "#FBBF24", xp: 60 },
-  streak_60: { id: "streak_60", name: "60 Day Streak", icon: "⚡", desc: "Studied 60 days in a row", color: "#FBBF24", xp: 70 },
-  streak_100: { id: "streak_100", name: "100 Day Streak", icon: "⚡", desc: "Studied 100 days in a row", color: "#FBBF24", xp: 90 },
-  active_60_minutes: { id: "active_60_minutes", name: "Focused Hour", icon: "⏳", desc: "Spent 60 active minutes in StudyOS", color: "#10B981", xp: 20 },
-  weekly_300_minutes: { id: "weekly_300_minutes", name: "Weekly Grind", icon: "📈", desc: "Reached 300 active study minutes this week", color: "#10B981", xp: 25 },
-  weekly_600_minutes: { id: "weekly_600_minutes", name: "Deep Work Week", icon: "📈", desc: "Reached 600 active study minutes this week", color: "#10B981", xp: 35 },
-  night_owl: { id: "night_owl", name: "Night Owl", icon: "🦉", desc: "Studied past midnight", color: "#7C3AED", xp: 15 },
-  early_bird: { id: "early_bird", name: "Early Bird", icon: "🌅", desc: "Studied before 7am", color: "#F59E0B", xp: 15 },
-  speed_note: { id: "speed_note", name: "Speed Learner", icon: "⚡", desc: "Generated a note in under 30 seconds", color: "#34D399", xp: 20 },
-  feynman_5: { id: "feynman_5", name: "Feynman Scholar", icon: "🧠", desc: "5 Teach Me sessions completed", color: "#A855F7", xp: 35 },
-  scan_first: { id: "scan_first", name: "Paper Digitizer", icon: "📸", desc: "Scanned your first paper", color: "#EC4899", xp: 20 },
-  formula_20: { id: "formula_20", name: "Formula Collector", icon: "📐", desc: "20 formulas saved", color: "#06B6D4", xp: 35 },
-  focus_60: { id: "focus_60", name: "Deep Focus", icon: "🎯", desc: "Completed a 60-minute focus session", color: "#10B981", xp: 25 },
-  group_host: { id: "group_host", name: "Study Host", icon: "🏠", desc: "Hosted a group study room", color: "#F472B6", xp: 25 },
-  all_features: { id: "all_features", name: "Explorer", icon: "🗺️", desc: "Used every feature at least once", color: "#6C63FF", xp: 75 },
-  level_5: { id: "level_5", name: "Level 5", icon: "🎓", desc: "Reached level 5", color: "#818CF8", xp: 30 },
-  level_10: { id: "level_10", name: "Level 10", icon: "🏆", desc: "Reached level 10", color: "#FBBF24", xp: 40 },
-  level_20: { id: "level_20", name: "Level 20", icon: "🏆", desc: "Reached level 20", color: "#FBBF24", xp: 50 },
-  level_scholar: { id: "level_scholar", name: "Scholar", icon: "🎓", desc: "Reached Scholar level (100 XP)", color: "#818CF8", xp: 20 },
-  level_genius: { id: "level_genius", name: "Genius", icon: "🏆", desc: "Reached Genius level (500 XP)", color: "#FBBF24", xp: 40 }
+  first_note: { id: "first_note", name: "Note Taker", icon: "", desc: "Generated your first note", color: "#818CF8", xp: 20 },
+  five_notes: { id: "five_notes", name: "Note Builder", icon: "", desc: "Generated 5 notes", color: "#818CF8", xp: 25 },
+  ten_notes: { id: "ten_notes", name: "Study Scribe", icon: "", desc: "10 notes generated", color: "#818CF8", xp: 35 },
+  twentyfive_notes: { id: "twentyfive_notes", name: "Revision Library", icon: "", desc: "Generated 25 notes", color: "#6C63FF", xp: 45 },
+  note_10: { id: "note_10", name: "Study Scribe", icon: "", desc: "10 notes generated", color: "#818CF8", xp: 35 },
+  note_50: { id: "note_50", name: "Encyclopedia", icon: "", desc: "50 notes generated", color: "#6C63FF", xp: 60 },
+  first_quiz: { id: "first_quiz", name: "Quiz Starter", icon: "", desc: "Completed your first quiz", color: "#38BDF8", xp: 20 },
+  five_quizzes: { id: "five_quizzes", name: "Quiz Runner", icon: "", desc: "Completed 5 quizzes", color: "#38BDF8", xp: 30 },
+  ten_quizzes: { id: "ten_quizzes", name: "Quiz Marathon", icon: "", desc: "Completed 10 quizzes", color: "#38BDF8", xp: 40 },
+  quiz_10: { id: "quiz_10", name: "Quiz Master", icon: "", desc: "10 quizzes completed", color: "#38BDF8", xp: 40 },
+  quiz_master_80: { id: "quiz_master_80", name: "Quiz Master", icon: "", desc: "Scored 80% or above in a quiz", color: "#38BDF8", xp: 25 },
+  quiz_master_90: { id: "quiz_master_90", name: "Quiz Ace", icon: "", desc: "Scored 90% or above in a quiz", color: "#FCD34D", xp: 30 },
+  quiz_perfect: { id: "quiz_perfect", name: "Perfectionist", icon: "", desc: "Scored 100% on a quiz", color: "#FCD34D", xp: 30 },
+  first_plan: { id: "first_plan", name: "First Plan", icon: "", desc: "Created your first study plan", color: "#818CF8", xp: 20 },
+  first_task_completed: { id: "first_task_completed", name: "Task Ticked Off", icon: "", desc: "Completed your first planner task", color: "#818CF8", xp: 10 },
+  ten_tasks_completed: { id: "ten_tasks_completed", name: "Task Finisher", icon: "", desc: "Completed 10 planner tasks", color: "#818CF8", xp: 20 },
+  fifty_tasks_completed: { id: "fifty_tasks_completed", name: "Momentum Builder", icon: "", desc: "Completed 50 planner tasks", color: "#818CF8", xp: 35 },
+  streak_3: { id: "streak_3", name: "Getting Warm", icon: "", desc: "3-day study streak", color: "#F97316", xp: 20 },
+  streak_7: { id: "streak_7", name: "On Fire", icon: "", desc: "7-day study streak", color: "#EF4444", xp: 35 },
+  streak_14: { id: "streak_14", name: "14 Day Streak", icon: "", desc: "Studied 14 days in a row", color: "#F97316", xp: 40 },
+  streak_30: { id: "streak_30", name: "Unstoppable", icon: "", desc: "30-day study streak", color: "#FBBF24", xp: 60 },
+  streak_60: { id: "streak_60", name: "60 Day Streak", icon: "", desc: "Studied 60 days in a row", color: "#FBBF24", xp: 70 },
+  streak_100: { id: "streak_100", name: "100 Day Streak", icon: "", desc: "Studied 100 days in a row", color: "#FBBF24", xp: 90 },
+  active_60_minutes: { id: "active_60_minutes", name: "Focused Hour", icon: "", desc: "Spent 60 active minutes in StudyOS", color: "#10B981", xp: 20 },
+  weekly_300_minutes: { id: "weekly_300_minutes", name: "Weekly Grind", icon: "", desc: "Reached 300 active study minutes this week", color: "#10B981", xp: 25 },
+  weekly_600_minutes: { id: "weekly_600_minutes", name: "Deep Work Week", icon: "", desc: "Reached 600 active study minutes this week", color: "#10B981", xp: 35 },
+  night_owl: { id: "night_owl", name: "Night Owl", icon: "", desc: "Studied past midnight", color: "#7C3AED", xp: 15 },
+  early_bird: { id: "early_bird", name: "Early Bird", icon: "", desc: "Studied before 7am", color: "#F59E0B", xp: 15 },
+  speed_note: { id: "speed_note", name: "Speed Learner", icon: "", desc: "Generated a note in under 30 seconds", color: "#34D399", xp: 20 },
+  feynman_5: { id: "feynman_5", name: "Feynman Scholar", icon: "", desc: "5 Teach Me sessions completed", color: "#A855F7", xp: 35 },
+  scan_first: { id: "scan_first", name: "Paper Digitizer", icon: "", desc: "Scanned your first paper", color: "#EC4899", xp: 20 },
+  formula_20: { id: "formula_20", name: "Formula Collector", icon: "", desc: "20 formulas saved", color: "#06B6D4", xp: 35 },
+  focus_60: { id: "focus_60", name: "Deep Focus", icon: "", desc: "Completed a 60-minute focus session", color: "#10B981", xp: 25 },
+  group_host: { id: "group_host", name: "Study Host", icon: "", desc: "Hosted a group study room", color: "#F472B6", xp: 25 },
+  all_features: { id: "all_features", name: "Explorer", icon: "", desc: "Used every feature at least once", color: "#6C63FF", xp: 75 },
+  level_5: { id: "level_5", name: "Level 5", icon: "", desc: "Reached level 5", color: "#818CF8", xp: 30 },
+  level_10: { id: "level_10", name: "Level 10", icon: "", desc: "Reached level 10", color: "#FBBF24", xp: 40 },
+  level_20: { id: "level_20", name: "Level 20", icon: "", desc: "Reached level 20", color: "#FBBF24", xp: 50 },
+  level_scholar: { id: "level_scholar", name: "Scholar", icon: "", desc: "Reached Scholar level (100 XP)", color: "#818CF8", xp: 20 },
+  level_genius: { id: "level_genius", name: "Genius", icon: "", desc: "Reached Genius level (500 XP)", color: "#FBBF24", xp: 40 }
 };
 
 type ActivityType = "note" | "quiz" | "study" | "planner" | "focus" | "teachme" | "scan" | "evaluation" | "revision";
@@ -272,6 +271,8 @@ async function resolveAchievementCandidates(userId: string, user: {
 }
 
 export async function evaluateAchievements(userId: string, _streak?: number, _level?: number) {
+  void _streak;
+  void _level;
   const user = await UserModel.findById(userId).select("streak totalNotesGenerated totalQuizzesTaken totalXP xp usedFeatures timezone").lean();
   if (!user) {
     return [];
@@ -430,7 +431,7 @@ export async function logActivity(input: LogActivityInput): Promise<Gamification
     user.totalQuizzesTaken += 1;
   }
 
-  let xpGained = addActivityXp(input);
+  const xpGained = addActivityXp(input);
   const beforeAchievementXP = user.totalXP ?? user.xp ?? 0;
   const totalAfterActivity = beforeAchievementXP + xpGained;
   Object.assign(user, syncLegacyXpFields(totalAfterActivity));

@@ -30,7 +30,10 @@ const ScanResultSchema = new Schema(
     },
     convertedNoteId: { type: Schema.Types.ObjectId, ref: "Note", default: null }
   },
-  { timestamps: { createdAt: true, updatedAt: false } }
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    suppressReservedKeysWarning: true
+  }
 );
 
 export const ScanResultModel = models.ScanResult || model("ScanResult", ScanResultSchema);

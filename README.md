@@ -75,12 +75,27 @@ Optional:
 - `UPSTASH_REDIS_REST_TOKEN`
 - `NEXT_DISABLE_WEBPACK_CACHE`
 
+Study Room realtime variables:
+
+- `PUSHER_APP_ID`
+- `PUSHER_KEY`
+- `PUSHER_SECRET`
+- `PUSHER_CLUSTER`
+- `NEXT_PUBLIC_PUSHER_KEY`
+- `NEXT_PUBLIC_PUSHER_CLUSTER`
+
 ## Quality Checks
 
 ```bash
 npm run lint
 npm run typecheck
 npm run build
+```
+
+If onboarding routes start returning `404` during local development after route changes, restart with:
+
+```bash
+npm run dev:clean
 ```
 
 ## Deployment

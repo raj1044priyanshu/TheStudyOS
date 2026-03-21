@@ -2,158 +2,143 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
-import {
-  IconChevronRight,
-  IconLogout,
-  IconMenu2,
-  IconMoonStars
-} from "@tabler/icons-react";
-import { Avatar } from "@/components/ui/avatar";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { NotificationBell } from "@/components/layout/NotificationBell";
-import { GlobalSearch } from "@/components/layout/GlobalSearch";
-import { floatingPanelClassName, floatingPanelScrollAreaClassName } from "@/components/ui/floating-panel";
-import { MOBILE_MORE_NAV_ITEMS, MOBILE_PRIMARY_NAV_ITEMS } from "@/lib/navigation";
+import { useMemo, useState } from "react";
+import { IconChevronRight, IconMenu2, IconX } from "@tabler/icons-react";
+import { MOBILE_MORE_NAV_ITEMS, MOBILE_PRIMARY_NAV_ITEMS, getHubNavKey } from "@/lib/hubs";
 import { cn } from "@/lib/utils";
 
 export function MobileNav() {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const [open, setOpen] = useState(false);
-  const isNoteViewer = pathname.startsWith("/notes/");
-  const isMoreActive = MOBILE_MORE_NAV_ITEMS.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const activeKey = getHubNavKey(pathname);
+  const [moreOpen, setMoreOpen] = useState(false);
 
-  if (isNoteViewer) {
-    return null;
-  }
+  const moreActive = useMemo(
+    () =>
+      MOBILE_MORE_NAV_ITEMS.some((item) => pathname.startsWith(item.href)) ||
+      activeKey === "revise" ||
+      activeKey === "track" ||
+      activeKey === "profile",
+    [activeKey, pathname]
+  );
 
   return (
     <>
-      <AnimatePresence>
-        {open ? (
-          <>
-            <motion.button
-              type="button"
-              className="fixed inset-0 z-40 bg-[rgba(28,27,41,0.18)] backdrop-blur-[2px] md:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setOpen(false)}
-              aria-label="Close more menu"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 24 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              data-tour-id="mobile-more-sheet"
-              className={cn(
-                floatingPanelClassName,
-                "fixed inset-x-3 bottom-24 z-50 flex max-h-[calc(100dvh-7rem)] flex-col p-4 md:hidden"
-              )}
-            >
-              <div className={cn(floatingPanelScrollAreaClassName, "space-y-4")}>
-                <div className="surface-card rounded-[18px] p-3">
-                  <Avatar src={session?.user?.image} alt={session?.user?.name ?? "Student"} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-[var(--foreground)]">{session?.user?.name ?? "Student"}</p>
-                    <p className="text-xs text-[var(--muted-foreground)]">Your calm study workspace</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <NotificationBell align="left" />
-                    <ThemeToggle className="h-11 w-11" />
-                  </div>
-                </div>
-
-                <div className="relative">
-                  <GlobalSearch className="relative" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {MOBILE_MORE_NAV_ITEMS.map((item) => {
-                    const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        data-tour-id={item.tourId}
-                        onClick={() => setOpen(false)}
-                        className={cn(
-                          "glass-card flex items-center justify-between gap-3 px-4 py-3 transition",
-                          active && "border-[color:var(--secondary-button-border)] bg-[color:var(--secondary-button-bg)]"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="surface-icon inline-flex h-10 w-10 items-center justify-center rounded-full">
-                            <item.icon className="h-[18px] w-[18px]" />
-                          </span>
-                          <span className="text-sm font-medium text-[var(--foreground)]">{item.label}</span>
-                        </div>
-                        <IconChevronRight className="h-4 w-4 text-[var(--tertiary-foreground)]" />
-                      </Link>
-                    );
-                  })}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="glass-card flex w-full items-center justify-between px-4 py-3 text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="surface-icon-muted inline-flex h-10 w-10 items-center justify-center rounded-full">
-                      <IconLogout className="h-[18px] w-[18px]" />
-                    </span>
-                    <span className="text-sm font-medium text-[var(--foreground)]">Logout</span>
-                  </div>
-                  <IconMoonStars className="h-4 w-4 text-[var(--tertiary-foreground)]" />
-                </button>
-              </div>
-            </motion.div>
-          </>
-        ) : null}
-      </AnimatePresence>
-
-      <nav className="glass-nav fixed bottom-3 left-3 right-3 z-40 rounded-[24px] border border-[color:var(--panel-border)] px-2 py-2 shadow-[0_12px_32px_rgba(123,108,246,0.14)] md:hidden">
-        <div className="grid grid-cols-5 gap-1">
+      <nav className="glass-nav fixed bottom-0 left-0 right-0 z-40 border-t border-[color:var(--panel-border)] px-2 pb-[max(env(safe-area-inset-bottom),0px)] pt-1 shadow-[0_-12px_32px_rgba(123,108,246,0.1)] md:hidden">
+        <div className="grid h-[4.3rem] grid-cols-5 gap-1">
           {MOBILE_PRIMARY_NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active = activeKey === item.key;
+            const label = item.key === "dashboard" ? "Home" : item.label;
             return (
               <Link
-                key={item.href}
+                key={item.key}
                 href={item.href}
                 prefetch
-                data-tour-id={item.tourId}
                 className={cn(
-                  "rounded-[18px] px-2 py-2 text-center transition",
-                  active ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[var(--primary-shadow)]" : "text-[var(--muted-foreground)]"
+                  "flex flex-col items-center justify-center rounded-[18px] text-center transition",
+                  active ? "text-[#7B6CF6]" : "text-[var(--tertiary-foreground)]"
                 )}
               >
-                <item.icon className="mx-auto h-[18px] w-[18px]" />
-                <span className="mt-1 block text-[10px] font-medium">{item.label}</span>
+                <item.icon className={cn("h-[22px] w-[22px]", active && "drop-shadow-[0_6px_12px_rgba(123,108,246,0.22)]")} />
+                <span className="mt-1 text-[10px] font-medium">{label}</span>
               </Link>
             );
           })}
 
           <button
             type="button"
-            onClick={() => setOpen((value) => !value)}
+            onClick={() => setMoreOpen(true)}
             className={cn(
-              "rounded-[18px] px-2 py-2 text-center transition",
-              open || isMoreActive ? "bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[var(--primary-shadow)]" : "text-[var(--muted-foreground)]"
+              "flex flex-col items-center justify-center rounded-[18px] text-center transition",
+              moreActive ? "text-[#7B6CF6]" : "text-[var(--tertiary-foreground)]"
             )}
-            data-tour-id="nav-more"
-            aria-expanded={open}
-            aria-label="Open more menu"
+            aria-expanded={moreOpen}
+            aria-label="Open more navigation"
           >
-            <IconMenu2 className="mx-auto h-[18px] w-[18px]" />
-            <span className="mt-1 block text-[10px] font-medium">More</span>
+            <IconMenu2 className={cn("h-[22px] w-[22px]", moreActive && "drop-shadow-[0_6px_12px_rgba(123,108,246,0.22)]")} />
+            <span className="mt-1 text-[10px] font-medium">More</span>
           </button>
         </div>
       </nav>
+
+      <AnimatePresence>
+        {moreOpen ? (
+          <>
+            <motion.button
+              type="button"
+              className="fixed inset-0 z-40 bg-[color:var(--overlay-scrim)] backdrop-blur-sm md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMoreOpen(false)}
+              aria-label="Close more navigation"
+            />
+            <motion.aside
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="fixed inset-x-0 bottom-0 z-50 rounded-t-[30px] border border-b-0 border-[color:var(--panel-border)] bg-[color:var(--glass-surface-strong)] px-4 pb-[calc(max(env(safe-area-inset-bottom),0px)+1rem)] pt-4 shadow-[var(--glass-shadow-deep)] backdrop-blur-2xl md:hidden"
+            >
+              <div className="mx-auto max-w-md">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">More</p>
+                    <h3 className="mt-2 font-headline text-[2rem] tracking-[-0.03em] text-[var(--foreground)]">Quick destinations</h3>
+                    <p className="mt-1 text-sm leading-6 text-[var(--muted-foreground)]">
+                      Open your profile, revision tools, progress views, and group study from here.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMoreOpen(false)}
+                    className="surface-icon-muted inline-flex h-11 w-11 items-center justify-center rounded-[18px] transition hover:text-[var(--foreground)]"
+                    aria-label="Close more navigation"
+                  >
+                    <IconX className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="grid gap-3">
+                  {MOBILE_MORE_NAV_ITEMS.map((item) => {
+                    const active = pathname.startsWith(item.href);
+                    return (
+                      <Link
+                        key={item.key}
+                        href={item.href}
+                        onClick={() => setMoreOpen(false)}
+                        className={cn(
+                          "surface-card flex items-center justify-between gap-3 rounded-[22px] px-4 py-4 transition",
+                          active && "border-[color:var(--secondary-button-border)] bg-[color:var(--nav-active-bg)]"
+                        )}
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className={cn("inline-flex h-11 w-11 items-center justify-center rounded-[16px]", active ? "surface-icon" : "surface-icon-muted")}>
+                            <item.icon className="h-[18px] w-[18px]" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-medium text-[var(--foreground)]">{item.label}</p>
+                            <p className="text-xs text-[var(--muted-foreground)]">
+                              {item.key === "profile"
+                                ? "Settings, level, and account details"
+                                : item.key === "study-room"
+                                  ? "Group study, live timer, chat, and whiteboard"
+                                  : item.key === "revise"
+                                    ? "Revision queue, formulas, and mind maps"
+                                    : "Progress, streaks, and weak-topic review"}
+                            </p>
+                          </div>
+                        </div>
+                        <IconChevronRight className="h-4 w-4 text-[var(--tertiary-foreground)]" />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

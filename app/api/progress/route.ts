@@ -6,6 +6,7 @@ import { requireUser, applyRouteRateLimit } from "@/lib/api";
 import { getActiveStudyStats } from "@/lib/study-time";
 import { UserModel } from "@/models/User";
 import { QuizModel } from "@/models/Quiz";
+import { PlannerCheckpointModel } from "@/models/PlannerCheckpoint";
 import { ProgressModel } from "@/models/Progress";
 
 export async function GET() {
@@ -23,7 +24,7 @@ export async function GET() {
     timezone: user?.timezone ?? "UTC"
   });
 
-  const [quizStats, subjectBreakdown, quizTimeline, weakTopics] = await Promise.all([
+  const [quizStats, subjectBreakdown, quizTimeline, weakTopics, checkpointStats, recentCheckpoints] = await Promise.all([
     QuizModel.aggregate<{ avg: number }>([
       { $match: { userId: objectUserId, completedAt: { $ne: null } } },
       { $group: { _id: null, avg: { $avg: "$score" } } }
@@ -42,7 +43,23 @@ export async function GET() {
       { $group: { _id: "$topic", score: { $avg: "$score" } } },
       { $match: { score: { $lt: 60 } } },
       { $project: { _id: 0, topic: "$_id", score: { $round: ["$score", 1] } } }
-    ])
+    ]),
+    PlannerCheckpointModel.aggregate<{ averageScore: number; total: number; passed: number }>([
+      { $match: { userId: objectUserId, status: "submitted" } },
+      {
+        $group: {
+          _id: null,
+          averageScore: { $avg: "$score" },
+          total: { $sum: 1 },
+          passed: { $sum: { $cond: ["$passed", 1, 0] } }
+        }
+      }
+    ]),
+    PlannerCheckpointModel.find({ userId: authResult.userId, status: "submitted" })
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .select("subject chapter score passed updatedAt")
+      .lean()
   ]);
 
   return NextResponse.json({
@@ -53,6 +70,9 @@ export async function GET() {
       totalNotesGenerated: user?.totalNotesGenerated ?? 0,
       totalQuizzesTaken: user?.totalQuizzesTaken ?? 0,
       averageQuizScore: Math.round(quizStats[0]?.avg ?? 0),
+      averageCheckpointScore: Math.round(checkpointStats[0]?.averageScore ?? 0),
+      totalCheckpoints: checkpointStats[0]?.total ?? 0,
+      passedCheckpoints: checkpointStats[0]?.passed ?? 0,
       studyMinutesWeek: activeStats.weekMinutes
     },
     subjectBreakdown,
@@ -62,6 +82,13 @@ export async function GET() {
       value: item.minutes
     })),
     weakTopics,
+    recentCheckpoints: recentCheckpoints.map((item) => ({
+      subject: item.subject,
+      chapter: item.chapter,
+      score: item.score,
+      passed: item.passed,
+      updatedAt: item.updatedAt
+    })),
     todayMinutes: activeStats.todayMinutes
   });
 }

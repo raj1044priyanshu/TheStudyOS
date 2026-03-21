@@ -1,5 +1,5 @@
-import { AutopsyReport } from "@/components/quiz/AutopsyReport";
+import { redirect } from "next/navigation";
 
 export default function QuizAutopsyPage({ params }: { params: { id: string } }) {
-  return <AutopsyReport quizId={params.id} />;
+  redirect(`/dashboard/quiz/${params.id}/autopsy`);
 }

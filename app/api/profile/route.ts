@@ -9,7 +9,15 @@ import { normalizeTimeZone } from "@/lib/timezone";
 const patchSchema = z.object({
   name: z.string().min(2).max(60).optional(),
   imageBase64: z.string().min(100).optional(),
-  timezone: z.string().min(2).max(100).optional()
+  timezone: z.string().min(2).max(100).optional(),
+  studyProfile: z
+    .object({
+      class: z.string().min(2).optional(),
+      board: z.string().min(2).optional(),
+      stream: z.enum(["Science", "Commerce", "Humanities", "Other"]).optional(),
+      studyHoursPerDay: z.number().min(1).max(16).optional()
+    })
+    .optional()
 });
 
 function toProfilePayload(user: {
@@ -19,6 +27,12 @@ function toProfilePayload(user: {
   image?: string | null;
   timezone?: string | null;
   createdAt?: Date;
+  studyProfile?: {
+    class?: string | null;
+    board?: string | null;
+    stream?: string | null;
+    studyHoursPerDay?: number | null;
+  } | null;
 }) {
   return {
     id: user._id.toString(),
@@ -26,6 +40,12 @@ function toProfilePayload(user: {
     email: user.email,
     image: user.image ?? null,
     timezone: normalizeTimeZone(user.timezone),
+    studyProfile: {
+      class: user.studyProfile?.class ?? "",
+      board: user.studyProfile?.board ?? "",
+      stream: user.studyProfile?.stream ?? "",
+      studyHoursPerDay: user.studyProfile?.studyHoursPerDay ?? 0
+    },
     createdAt: user.createdAt?.toISOString() ?? null
   };
 }
@@ -56,9 +76,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { name, imageBase64, timezone } = parsed.data;
+  const { name, imageBase64, timezone, studyProfile } = parsed.data;
 
-  if (!name && !imageBase64 && !timezone) {
+  if (!name && !imageBase64 && !timezone && !studyProfile) {
     return NextResponse.json({ error: "No updates provided" }, { status: 400 });
   }
 
@@ -74,6 +94,16 @@ export async function PATCH(request: Request) {
 
   if (timezone) {
     user.timezone = normalizeTimeZone(timezone);
+  }
+
+  if (studyProfile) {
+    user.studyProfile = {
+      ...user.studyProfile,
+      ...(studyProfile.class ? { class: studyProfile.class.trim() } : {}),
+      ...(studyProfile.board ? { board: studyProfile.board.trim() } : {}),
+      ...(studyProfile.stream ? { stream: studyProfile.stream } : {}),
+      ...(typeof studyProfile.studyHoursPerDay === "number" ? { studyHoursPerDay: studyProfile.studyHoursPerDay } : {})
+    };
   }
 
   if (imageBase64) {

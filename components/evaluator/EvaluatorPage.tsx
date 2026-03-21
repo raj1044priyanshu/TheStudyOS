@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
+import { NextStepCard } from "@/components/shared/NextStepCard";
 import { SUBJECTS } from "@/lib/constants";
 import { triggerAchievementCheck } from "@/lib/client-achievements";
+import { getHubHref } from "@/lib/hubs";
 
 interface EvaluationRecord {
   _id: string;
@@ -158,7 +160,7 @@ export function EvaluatorPage() {
             <p className="mt-2 text-right text-xs text-[var(--muted-foreground)]">{wordCount} words</p>
           </div>
           <Button onClick={submit} disabled={loading || form.answer.trim().length < 100 || form.maxMarks < 1 || form.maxMarks > 100}>
-            📊 Evaluate My Answer
+            Evaluate My Answer
           </Button>
         </div>
 
@@ -202,7 +204,7 @@ export function EvaluatorPage() {
 
               <div className="flex flex-wrap gap-2">
                 <Button onClick={improveAnswer} disabled={improving || Boolean(evaluation.improvedAnswer)}>
-                  ✨ {evaluation.improvedAnswer ? "Improved Answer Ready" : improving ? "Improving..." : "Improve My Answer"}
+                  {evaluation.improvedAnswer ? "Improved Answer Ready" : improving ? "Improving..." : "Improve My Answer"}
                 </Button>
                 <Button
                   variant="outline"
@@ -211,9 +213,33 @@ export function EvaluatorPage() {
                     setImprovedAnswer("");
                   }}
                 >
-                  🔄 Evaluate Again
+                  Evaluate Again
                 </Button>
               </div>
+
+              {percentage < 70 ? (
+                <NextStepCard
+                  suggestions={[
+                    {
+                      icon: "",
+                      title: "See the improved version",
+                      description: "Compare your draft with a stronger answer that fixes the lost marks.",
+                      action: "improve_answer"
+                    },
+                    {
+                      icon: "",
+                      title: `Read notes on ${evaluation.subject}`,
+                      description: "Rebuild the knowledge base behind this answer before writing again.",
+                      href: `${getHubHref("study", "notes")}&subject=${encodeURIComponent(evaluation.subject)}`
+                    }
+                  ]}
+                  onAction={(action) => {
+                    if (action === "improve_answer") {
+                      return improveAnswer();
+                    }
+                  }}
+                />
+              ) : null}
             </div>
           ) : (
             <div className="flex h-full min-h-[440px] items-center justify-center text-center text-sm text-[var(--muted-foreground)]">

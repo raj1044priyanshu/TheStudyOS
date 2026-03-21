@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { IconArrowRight, IconCalendarWeek, IconSparkles } from "@tabler/icons-react";
+import { IconArrowRight, IconBook2, IconCalendarStats, IconCalendarWeek, IconChartBar, IconSparkles } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { triggerAchievementCheck } from "@/lib/client-achievements";
+import { getHubHref } from "@/lib/hubs";
 
 interface BriefTask {
   subject: string;
@@ -53,8 +54,18 @@ export function DailyBrief() {
     const lastSeen = window.localStorage.getItem(STORAGE_KEY);
     if (lastSeen !== today) {
       setVisible(true);
+      window.dispatchEvent(new CustomEvent("studyos:brief-opened"));
     }
     void triggerAchievementCheck("daily_login");
+
+    const handler = () => {
+      setVisible(true);
+      setClosing(false);
+      window.dispatchEvent(new CustomEvent("studyos:brief-opened"));
+    };
+
+    window.addEventListener("studyos:show-brief", handler);
+    return () => window.removeEventListener("studyos:show-brief", handler);
   }, [today]);
 
   useEffect(() => {
@@ -79,6 +90,7 @@ export function DailyBrief() {
     window.setTimeout(() => {
       setVisible(false);
       setClosing(false);
+      window.dispatchEvent(new CustomEvent("studyos:brief-dismissed"));
     }, 220);
   }
 
@@ -89,12 +101,15 @@ export function DailyBrief() {
   return (
     <div
       className={cn(
-        "fixed inset-0 z-[88] flex items-center justify-center bg-[rgba(20,24,42,0.34)] p-4 backdrop-blur-md transition-opacity",
+        "fixed inset-0 z-[88] flex items-start justify-center overflow-y-auto bg-[rgba(20,24,42,0.34)] p-3 backdrop-blur-md transition-opacity sm:items-center sm:p-4",
         closing && "opacity-0"
       )}
     >
-      <div className="glass-modal w-full max-w-[680px] rounded-[32px] p-6 shadow-[var(--glass-shadow-deep)] sm:p-10">
-        <div className="space-y-6">
+      <div
+        id="daily-brief-card"
+        className="glass-modal my-3 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[680px] flex-col overflow-hidden rounded-[32px] p-6 shadow-[var(--glass-shadow-deep)] sm:my-0 sm:max-h-[calc(100dvh-2rem)] sm:p-10"
+      >
+        <div className="space-y-6 overflow-y-auto pr-1">
           <div className="space-y-2 text-center">
             <p className="font-headline text-[2.2rem] leading-none tracking-[-0.04em] text-[var(--foreground)] sm:text-[2.5rem]">
               {payload ? `${payload.greeting}, ${payload.profile.firstName}` : "Loading your study brief..."}
@@ -112,9 +127,9 @@ export function DailyBrief() {
           {payload?.isNewUser ? (
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                { title: "Generate a note", href: "/notes", desc: "Start with one clear topic." },
-                { title: "Try a quiz", href: "/quiz", desc: "Check what you already know." },
-                { title: "Build a plan", href: "/planner", desc: "Map your next few days." }
+                { title: "Generate a note", href: getHubHref("study", "notes"), desc: "Start with one clear topic." },
+                { title: "Try a quiz", href: getHubHref("test", "quiz"), desc: "Check what you already know." },
+                { title: "Build a plan", href: getHubHref("plan", "planner"), desc: "Map your next few days." }
               ].map((item) => (
                 <Link key={item.title} href={item.href} className="surface-card rounded-[22px] p-4 transition hover:-translate-y-0.5">
                   <p className="text-base font-semibold text-[var(--foreground)]">{item.title}</p>
@@ -127,7 +142,7 @@ export function DailyBrief() {
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
                   <IconCalendarWeek className="h-4 w-4 text-[#7B6CF6]" />
-                  <p className="text-sm font-semibold text-[var(--foreground)]">Today's Study Plan</p>
+                  <p className="text-sm font-semibold text-[var(--foreground)]">Today&apos;s Study Plan</p>
                 </div>
                 {payload?.todayPlan?.length ? (
                   <div className="flex flex-wrap gap-2">
@@ -147,7 +162,7 @@ export function DailyBrief() {
                 ) : (
                   <div className="surface-card flex items-center justify-between gap-3 rounded-[22px] p-4">
                     <p className="text-sm text-[var(--muted-foreground)]">No study plan for today. Want me to create one?</p>
-                    <Link href="/planner" className="text-sm font-medium text-[#7B6CF6]">
+                    <Link href={getHubHref("plan", "planner")} className="text-sm font-medium text-[#7B6CF6]">
                       Open Planner
                     </Link>
                   </div>
@@ -171,12 +186,18 @@ export function DailyBrief() {
 
               <section className="grid gap-3 sm:grid-cols-3">
                 <div className="surface-card rounded-[22px] p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">📚 Revision Due</p>
+                  <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">
+                    <IconBook2 className="h-3.5 w-3.5" />
+                    Revision Due
+                  </p>
                   <p className="mt-3 font-headline text-[2rem] text-[var(--foreground)]">{payload?.revisionDue ?? 0}</p>
                   <p className="text-sm text-[var(--muted-foreground)]">items today</p>
                 </div>
                 <div className="surface-card rounded-[22px] p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">📊 Yesterday</p>
+                  <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">
+                    <IconChartBar className="h-3.5 w-3.5" />
+                    Yesterday
+                  </p>
                   <p className="mt-3 font-headline text-[2rem] text-[var(--foreground)]">
                     {payload?.yesterdayProgress ? payload.yesterdayProgress.studyMinutes : 0}
                   </p>
@@ -185,7 +206,10 @@ export function DailyBrief() {
                   </p>
                 </div>
                 <div className="surface-card rounded-[22px] p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">📅 Forecast</p>
+                  <p className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">
+                    <IconCalendarStats className="h-3.5 w-3.5" />
+                    Forecast
+                  </p>
                   <p className="mt-3 font-headline text-[2rem] capitalize text-[var(--foreground)]">{payload?.studyForecast ?? "light"}</p>
                   <p className="text-sm text-[var(--muted-foreground)]">study day</p>
                 </div>
@@ -198,7 +222,7 @@ export function DailyBrief() {
                   <div className="mt-3 flex items-center justify-between gap-3">
                     <span className="rounded-full bg-[#7B6CF6]/12 px-3 py-1 text-xs font-medium text-[#7B6CF6]">{payload.weakestTopic.subject}</span>
                     <Link
-                      href={`/notes?topic=${encodeURIComponent(payload.weakestTopic.topic)}&subject=${encodeURIComponent(payload.weakestTopic.subject)}`}
+                      href={`${getHubHref("study", "notes")}&topic=${encodeURIComponent(payload.weakestTopic.topic)}&subject=${encodeURIComponent(payload.weakestTopic.subject)}`}
                       className="inline-flex items-center gap-1 text-sm font-medium text-[#7B6CF6]"
                     >
                       Study Now <IconArrowRight className="h-4 w-4" />
@@ -209,10 +233,12 @@ export function DailyBrief() {
             </>
           )}
 
-          <Button onClick={dismiss} className="w-full gap-2 rounded-full">
-            <IconSparkles className="h-4 w-4" />
-            Let&apos;s Go <IconArrowRight className="h-4 w-4" />
-          </Button>
+          <div className="sticky bottom-0 mt-2 bg-[linear-gradient(180deg,rgba(255,255,255,0),var(--glass-surface-strong)_28%)] pt-4 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0),var(--glass-surface-strong)_28%)]">
+            <Button onClick={dismiss} className="w-full gap-2 rounded-full">
+              <IconSparkles className="h-4 w-4" />
+              Let&apos;s Go <IconArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

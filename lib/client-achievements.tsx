@@ -25,7 +25,7 @@ export function showAchievementToasts(achievements: AchievementItem[]) {
       toast.custom(
         () => (
           <AchievementToast
-            icon={achievement.icon ?? "🏆"}
+            icon={achievement.icon ?? ""}
             name={achievement.name ?? achievement.title ?? "Achievement"}
             xp={achievement.xp ?? 0}
             color={achievement.color ?? "#7B6CF6"}

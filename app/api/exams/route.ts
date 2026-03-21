@@ -2,7 +2,7 @@ import { z } from "zod";
 import { differenceInCalendarDays } from "date-fns";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
+import { requireUser, routeError } from "@/lib/api";
 import { ExamModel } from "@/models/Exam";
 import { NoteModel } from "@/models/Note";
 import { QuizModel } from "@/models/Quiz";

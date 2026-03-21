@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import dagre from "@dagrejs/dagre";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";

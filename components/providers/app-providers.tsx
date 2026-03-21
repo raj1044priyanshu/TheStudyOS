@@ -1,5 +1,7 @@
 "use client";
 
+import { GlobalLoadingBar } from "@/components/layout/GlobalLoadingBar";
+import { ErrorReporterProvider } from "@/components/providers/ErrorReporterProvider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "react-hot-toast";
 
@@ -10,7 +12,8 @@ interface Props {
 export function AppProviders({ children }: Props) {
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-      {children}
+      <GlobalLoadingBar />
+      <ErrorReporterProvider>{children}</ErrorReporterProvider>
       <Toaster
         position="top-right"
         toastOptions={{

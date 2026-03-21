@@ -104,7 +104,7 @@ Return ONLY this exact JSON, no markdown, no explanation:
       ...result.data,
       weakTopics: (result.data.weakTopics ?? []).map((topic) => ({
         ...topic,
-        revisionLink: topic.revisionLink || `/notes?topic=${encodeURIComponent(topic.topic)}`
+        revisionLink: topic.revisionLink || `/dashboard/study?tool=notes&topic=${encodeURIComponent(topic.topic)}`
       })),
       generatedAt: new Date()
     };

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, routeError } from "@/lib/api";
 import { StudyRoomModel } from "@/models/StudyRoom";
-import { pusherServer } from "@/lib/pusher";
+import { isPusherConfigured, pusherServer } from "@/lib/pusher";
 import type { StudyRoomMember } from "@/types";
 
 const schema = z.object({
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ room });
+    return NextResponse.json({ room, realtimeReady: isPusherConfigured() });
   } catch (error) {
     return routeError("study-room:join", error);
   }

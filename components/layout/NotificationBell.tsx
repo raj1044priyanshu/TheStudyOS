@@ -32,8 +32,11 @@ export function NotificationBell({ align = "right", className }: Props) {
 
   async function loadNotifications() {
     const response = await fetch("/api/notifications", { cache: "no-store" });
-    const data = await response.json();
-    if (!response.ok) return;
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setLoading(false);
+      return;
+    }
     setItems(data.notifications ?? []);
     setUnreadCount(data.unreadCount ?? 0);
     setLoading(false);
@@ -97,7 +100,7 @@ export function NotificationBell({ align = "right", className }: Props) {
         data-tour-id="topbar-notifications"
         size="icon"
         variant="outline"
-        className={cn("relative rounded-xl", className)}
+        className={cn("relative flex items-center justify-center rounded-full p-0", className)}
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-label="Open notifications"
@@ -152,6 +155,7 @@ export function NotificationBell({ align = "right", className }: Props) {
                     <Link
                       key={item.id}
                       href={item.actionUrl}
+                      className="block"
                       onClick={() => {
                         if (!item.read) {
                           void markSingleRead(item.id);
@@ -168,7 +172,7 @@ export function NotificationBell({ align = "right", className }: Props) {
                   <button
                     type="button"
                     key={item.id}
-                    className="w-full text-left"
+                    className="block w-full text-left"
                     onClick={() => {
                       if (!item.read) {
                         void markSingleRead(item.id);

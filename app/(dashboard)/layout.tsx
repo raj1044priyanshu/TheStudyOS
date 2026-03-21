@@ -6,7 +6,8 @@ import { ActiveStudyTracker } from "@/components/layout/ActiveStudyTracker";
 import { DashboardTransition } from "@/components/layout/DashboardTransition";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
-import { GuidedTour } from "@/components/onboarding/GuidedTour";
+import { ContextualHintsManager } from "@/components/help/ContextualHintsManager";
+import { TourManager } from "@/components/onboarding/TourManager";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getLevelFromXp, getProgressToNextLevel } from "@/lib/xp";
 import { UserModel } from "@/models/User";
@@ -19,10 +20,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   await connectToDatabase();
   const user = await UserModel.findById(session.user.id).lean();
-  if (user?.welcomeScreenSeen === false) {
-    redirect("/welcome");
+  if (user?.status === "suspended") {
+    redirect("/suspended");
   }
-  const shouldStartTour = !(user?.isTourShown ?? false);
+  if (!user?.onboardingCompleted) {
+    redirect("/onboarding");
+  }
   const totalXp = user?.totalXP ?? user?.xp ?? 0;
   const level = getLevelFromXp(totalXp);
 
@@ -30,7 +33,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     <div className="app-shell-bg min-h-screen">
       <OfflineBanner />
       <div className="flex">
-        <Sidebar user={session.user} />
+        <Sidebar user={session.user} isAdmin={user?.role === "admin"} />
         <div className="min-h-screen min-w-0 flex-1 pb-24 md:pb-0">
           <Topbar
             streak={user?.streak ?? 0}
@@ -39,16 +42,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
             levelIcon={level.icon}
             xp={totalXp}
             progressToNextLevel={getProgressToNextLevel(totalXp)}
+            studyStyle={user?.studyProfile?.studyStyle ?? ""}
             user={session.user}
           />
-          <div className="mx-auto w-full max-w-[1320px] p-4 md:p-6">
+          <div className="mx-auto w-full max-w-[1360px] px-3 pb-24 pt-3 sm:px-4 sm:pb-28 md:px-6 md:pb-6">
             <DashboardTransition>{children}</DashboardTransition>
           </div>
         </div>
       </div>
 
       <MobileNav />
-      <GuidedTour enabled={shouldStartTour} />
+      <TourManager />
+      <ContextualHintsManager />
       <ActiveStudyTracker />
     </div>
   );
