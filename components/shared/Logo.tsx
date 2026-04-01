@@ -1,4 +1,4 @@
-import { IconSparkles } from "@tabler/icons-react";
+import { StudyCompanion } from "@/components/companion/StudyCompanion";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -12,8 +12,8 @@ export function Logo({ className, textClassName, subtitleClassName, compact = fa
   if (!compact) {
     return (
       <div className={cn("flex items-start gap-3.5", className)}>
-        <span className="surface-icon inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full font-headline text-2xl">
-          <IconSparkles className="h-5 w-5" />
+        <span className="surface-icon inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
+          <StudyCompanion pose="wave" size={52} compact className="scale-[1.06]" />
         </span>
         <div className="space-y-1">
           <p
@@ -39,8 +39,8 @@ export function Logo({ className, textClassName, subtitleClassName, compact = fa
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span className="surface-icon inline-flex h-9 w-9 items-center justify-center rounded-full font-headline text-xl">
-        <IconSparkles className="h-4 w-4" />
+      <span className="surface-icon inline-flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
+        <StudyCompanion pose="sparkle" size={38} compact className="scale-[1.05]" />
       </span>
       <div>
         <p className={cn("font-headline text-base tracking-[-0.03em] text-[var(--foreground)]", textClassName)}>StudyOS</p>

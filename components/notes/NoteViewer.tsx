@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { SimplifierSlider } from "@/components/notes/SimplifierSlider";
 import { cn } from "@/lib/utils";
 import { SUBJECT_COLORS } from "@/lib/constants";
-import { analyzeNoteContent, extractNoteDiagramPlaceholders, NOTE_BLOCK_TAGS } from "@/lib/note-content";
+import { analyzeNoteContent, extractNoteDiagramPlaceholders, NOTE_BLOCK_TAGS, NOTE_INLINE_HIGHLIGHT_TAGS } from "@/lib/note-content";
 import type { NoteVisual } from "@/types";
 
 interface Props {
@@ -36,8 +36,10 @@ interface Props {
 const NOTE_BLOCK_MARKER_REGEX = new RegExp(`\\[\\s*\\/?\\s*(?:${NOTE_BLOCK_TAGS.join("|")})\\s*\\]`, "gi");
 
 function renderInlineHighlights(text: string) {
-  const pattern =
-    /(\[HIGHLIGHT_YELLOW\][\s\S]*?\[\/HIGHLIGHT_YELLOW\]|\[HIGHLIGHT_GREEN\][\s\S]*?\[\/HIGHLIGHT_GREEN\]|\[HIGHLIGHT_PINK\][\s\S]*?\[\/HIGHLIGHT_PINK\]|\[HIGHLIGHT_BLUE\][\s\S]*?\[\/HIGHLIGHT_BLUE\]|\[HIGHLIGHT_ORANGE\][\s\S]*?\[\/HIGHLIGHT_ORANGE\])/g;
+  const pattern = new RegExp(
+    `(${NOTE_INLINE_HIGHLIGHT_TAGS.map((tag) => `\\[${tag}\\][\\s\\S]*?\\[\\/${tag}\\]`).join("|")})`,
+    "g"
+  );
   const parts = text.split(pattern).filter(Boolean);
 
   const styleMap: Record<string, string> = {
@@ -350,7 +352,9 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                 if (block.tag === "HEADING1") {
                   return (
                     <section key={idx} className="pt-2">
-                      <h2 className="font-headline text-2xl tracking-[-0.03em] text-[var(--note-foreground)] sm:text-3xl">{block.value}</h2>
+                      <h2 className="font-headline text-2xl tracking-[-0.03em] text-[var(--note-foreground)] sm:text-3xl">
+                        {renderInlineHighlights(block.value ?? "")}
+                      </h2>
                     </section>
                   );
                 }
@@ -358,7 +362,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                 if (block.tag === "HEADING2") {
                   return (
                     <h3 key={idx} className="text-lg font-semibold text-[#1F4C8F] sm:text-xl">
-                      {block.value}
+                      {renderInlineHighlights(block.value ?? "")}
                     </h3>
                   );
                 }
@@ -366,7 +370,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                 if (block.tag === "HEADING3") {
                   return (
                     <h4 key={idx} className="text-base font-semibold uppercase tracking-[0.08em] text-[#51627C] sm:text-lg">
-                      {block.value}
+                      {renderInlineHighlights(block.value ?? "")}
                     </h4>
                   );
                 }
@@ -380,7 +384,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
 
                   return (
                     <aside key={idx} className={cn("rounded-[18px] border p-4 text-sm leading-6 shadow-[0_8px_20px_rgba(15,23,42,0.05)]", tone)}>
-                      {block.value}
+                      {renderInlineHighlights(block.value ?? "")}
                     </aside>
                   );
                 }
@@ -426,8 +430,8 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                     <section key={idx} className="rounded-[20px] border border-[#BEE3D5] bg-[#F3FBF8] p-4">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#236B5A]">Definition</p>
                       <p>
-                        <span className="font-semibold">{term}</span>
-                        {meaning ? <span> :: {meaning}</span> : null}
+                        <span className="font-semibold">{renderInlineHighlights(term ?? "")}</span>
+                        {meaning ? <span> :: {renderInlineHighlights(meaning)}</span> : null}
                       </p>
                     </section>
                   );
@@ -446,7 +450,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                   return (
                     <section key={idx} className="rounded-[20px] border border-[#D8CCF7] bg-[#F8F5FF] p-4">
                       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#6950AE]">Remember</p>
-                      <p>{block.value}</p>
+                      <p>{renderInlineHighlights(block.value ?? "")}</p>
                     </section>
                   );
                 }

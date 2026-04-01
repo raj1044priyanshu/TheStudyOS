@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit, parseJsonArray } from "@/lib/api";
-import { generateContent } from "@/lib/gemini";
+import { generateText as generateContent } from "@/lib/content-service";
 import { FlashcardModel } from "@/models/Flashcard";
 import { scheduleRevisionItem } from "@/lib/revision";
 import { markFeatureUsed } from "@/lib/progress";

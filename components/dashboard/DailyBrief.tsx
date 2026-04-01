@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { IconArrowRight, IconBook2, IconCalendarStats, IconCalendarWeek, IconChartBar, IconSparkles } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
+import { getCelebrationBusy } from "@/lib/client-celebrations";
 import { cn } from "@/lib/utils";
 import { triggerAchievementCheck } from "@/lib/client-achievements";
 import { getHubHref } from "@/lib/hubs";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 
 interface BriefTask {
   subject: string;
@@ -52,13 +54,32 @@ export function DailyBrief() {
 
   useEffect(() => {
     const lastSeen = window.localStorage.getItem(STORAGE_KEY);
-    if (lastSeen !== today) {
-      setVisible(true);
-      window.dispatchEvent(new CustomEvent("studyos:brief-opened"));
-    }
+    const tryOpen = () => {
+      if (lastSeen !== today && !getCelebrationBusy()) {
+        setVisible(true);
+        window.dispatchEvent(new CustomEvent("studyos:brief-opened"));
+      }
+    };
+
+    tryOpen();
+    const onCelebrationState = (event: Event) => {
+      const busy = Boolean((event as CustomEvent<{ busy?: boolean }>).detail?.busy);
+      if (!busy) {
+        tryOpen();
+      }
+    };
+
+    window.addEventListener("studyos:celebration-state", onCelebrationState);
+    return () => window.removeEventListener("studyos:celebration-state", onCelebrationState);
+  }, [today]);
+
+  useEffect(() => {
     void triggerAchievementCheck("daily_login");
 
     const handler = () => {
+      if (getCelebrationBusy()) {
+        return;
+      }
       setVisible(true);
       setClosing(false);
       window.dispatchEvent(new CustomEvent("studyos:brief-opened"));
@@ -66,7 +87,7 @@ export function DailyBrief() {
 
     window.addEventListener("studyos:show-brief", handler);
     return () => window.removeEventListener("studyos:show-brief", handler);
-  }, [today]);
+  }, []);
 
   useEffect(() => {
     if (!visible) return;
@@ -110,7 +131,10 @@ export function DailyBrief() {
         className="glass-modal my-3 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[680px] flex-col overflow-hidden rounded-[32px] p-6 shadow-[var(--glass-shadow-deep)] sm:my-0 sm:max-h-[calc(100dvh-2rem)] sm:p-10"
       >
         <div className="space-y-6 overflow-y-auto pr-1">
-          <div className="space-y-2 text-center">
+          <div className="space-y-3 text-center">
+            <div className="flex justify-center">
+              <CompanionBadge pose="wave" size={82} />
+            </div>
             <p className="font-headline text-[2.2rem] leading-none tracking-[-0.04em] text-[var(--foreground)] sm:text-[2.5rem]">
               {payload ? `${payload.greeting}, ${payload.profile.firstName}` : "Loading your study brief..."}
             </p>

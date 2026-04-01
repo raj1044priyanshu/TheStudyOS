@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { IconArrowUpRight, IconSparkles } from "@tabler/icons-react";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { Button } from "@/components/ui/button";
 import type { NextStepSuggestion } from "@/types";
 
@@ -16,13 +17,16 @@ export function NextStepCard({ suggestions, onAction }: Props) {
   }
 
   return (
-    <div className="glass-card rounded-[28px] border-l-4 border-l-[#7B6CF6] p-5">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">What to do next</p>
+    <div className="glass-card rounded-[28px] border-l-4 border-l-[color:var(--brand-500)] p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">What to do next</p>
+        <CompanionBadge pose="sparkle" size={50} />
+      </div>
       <div className="mt-4 grid gap-3">
         {suggestions.slice(0, 2).map((suggestion) => (
           <div key={`${suggestion.title}-${suggestion.href ?? suggestion.action ?? "static"}`} className="surface-card rounded-[22px] p-4">
             <div className="flex items-center gap-2">
-              <span className="surface-icon inline-flex h-9 w-9 items-center justify-center rounded-full text-[#7B6CF6]">
+              <span className="surface-icon inline-flex h-9 w-9 items-center justify-center rounded-full text-[color:var(--brand-500)]">
                 <IconSparkles className="h-4 w-4" />
               </span>
               <p className="font-medium text-[var(--foreground)]">{suggestion.title}</p>

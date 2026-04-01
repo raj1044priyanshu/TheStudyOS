@@ -80,10 +80,20 @@ export const NOTE_BLOCK_TAGS: NoteBlockTag[] = [
   "DIVIDER"
 ];
 
+export const NOTE_INLINE_HIGHLIGHT_TAGS = [
+  "HIGHLIGHT_YELLOW",
+  "HIGHLIGHT_GREEN",
+  "HIGHLIGHT_PINK",
+  "HIGHLIGHT_BLUE",
+  "HIGHLIGHT_ORANGE"
+] as const;
+
 const NOTE_TAGS = new Set<NoteBlockTag>(NOTE_BLOCK_TAGS);
 const BLOCK_GROUP = NOTE_BLOCK_TAGS.join("|");
 const BLOCK_MARKER_REGEX = new RegExp(`\\[\\s*\\/?\\s*(?:${BLOCK_GROUP})\\s*\\]`, "gi");
 const CLOSED_BLOCK_REGEX = new RegExp(`\\[\\s*(${BLOCK_GROUP})\\s*\\]([\\s\\S]*?)\\[\\s*\\/\\s*\\1\\s*\\]`, "gi");
+const INLINE_HIGHLIGHT_GROUP = NOTE_INLINE_HIGHLIGHT_TAGS.join("|");
+const INLINE_HIGHLIGHT_TOKEN_REGEX = new RegExp(`\\[\\s*(\\/)?\\s*(${INLINE_HIGHLIGHT_GROUP})\\s*\\]`, "gi");
 const TAG_PRIORITY: NonDividerBlockTag[] = [
   "TITLE",
   "SUBJECT_TAG",
@@ -121,6 +131,59 @@ function normalizeText(text: string) {
   return text.replace(/\s+/g, " ").trim();
 }
 
+function canonicalInlineHighlightToken(tag: string, closing = false) {
+  return closing ? `[/${tag}]` : `[${tag}]`;
+}
+
+export function sanitizeInlineHighlightMarkup(rawValue: string) {
+  const segments: string[] = [];
+  const issues: string[] = [];
+  const stack: Array<{ tag: (typeof NOTE_INLINE_HIGHLIGHT_TAGS)[number]; index: number }> = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null = null;
+
+  INLINE_HIGHLIGHT_TOKEN_REGEX.lastIndex = 0;
+
+  while ((match = INLINE_HIGHLIGHT_TOKEN_REGEX.exec(rawValue)) !== null) {
+    segments.push(rawValue.slice(cursor, match.index));
+
+    const isClosing = Boolean(match[1]);
+    const tag = (match[2] ?? "").toUpperCase() as (typeof NOTE_INLINE_HIGHLIGHT_TAGS)[number];
+
+    if (!isClosing) {
+      if (stack.length > 0) {
+        issues.push(`Nested inline highlight tags are not supported (${tag}).`);
+      } else {
+        segments.push(canonicalInlineHighlightToken(tag));
+        stack.push({ tag, index: segments.length - 1 });
+      }
+    } else if (stack.length > 0 && stack[stack.length - 1]?.tag === tag) {
+      segments.push(canonicalInlineHighlightToken(tag, true));
+      stack.pop();
+    } else {
+      issues.push(`Found a closing inline highlight tag without a matching opener (${tag}).`);
+    }
+
+    cursor = INLINE_HIGHLIGHT_TOKEN_REGEX.lastIndex;
+  }
+
+  segments.push(rawValue.slice(cursor));
+
+  while (stack.length > 0) {
+    const unmatched = stack.pop();
+    if (!unmatched) {
+      break;
+    }
+    segments[unmatched.index] = "";
+    issues.push(`Found an opening inline highlight tag without a matching closer (${unmatched.tag}).`);
+  }
+
+  return {
+    text: segments.join(""),
+    issues
+  };
+}
+
 function placeholderKeyFromDescription(description: string, index: number) {
   const base = description
     .toLowerCase()
@@ -133,6 +196,7 @@ function placeholderKeyFromDescription(description: string, index: number) {
 
 function sanitizeBlockValue(tag: NoteBlockTag, rawValue: string) {
   let value = rawValue.replace(BLOCK_MARKER_REGEX, " ");
+  value = sanitizeInlineHighlightMarkup(value).text;
   value = normalizeText(value);
   value = value.replace(/[▮□■▪]/g, " ");
   value = value.replace(/^\s*\u2702\s*/, "");
@@ -194,7 +258,7 @@ function parseLooseChunk(chunk: string, blocks: NoteBlock[]) {
       .filter((tag): tag is NoteBlockTag => NOTE_TAGS.has(tag))
       .filter((tag) => tag !== "DIVIDER");
 
-    const cleanText = normalizeText(line.replace(BLOCK_MARKER_REGEX, " "));
+    const cleanText = normalizeText(sanitizeInlineHighlightMarkup(line.replace(BLOCK_MARKER_REGEX, " ")).text);
     const selectedTag = pickPrimaryTag(tagsFromLine);
 
     if (selectedTag) {
@@ -336,6 +400,11 @@ function collectIssues(rawContent: string, metrics: NoteContentMetrics, mode: An
   }
   if (PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(rawContent))) {
     issues.push("The note contains placeholder or unfinished text.");
+  }
+
+  const inlineHighlightIssues = sanitizeInlineHighlightMarkup(rawContent).issues;
+  if (inlineHighlightIssues.length > 0) {
+    issues.push("The note contains unmatched or malformed inline highlight tags.");
   }
 
   return issues;

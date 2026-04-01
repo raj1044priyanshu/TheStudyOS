@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, routeError } from "@/lib/api";
 import { EvaluationModel } from "@/models/Evaluation";
-import { generatePlainTextWithFallback } from "@/lib/ai";
+import { generateTextWithFallback as generatePlainTextWithFallback } from "@/lib/content-service";
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {
   try {

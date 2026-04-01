@@ -18,7 +18,7 @@ export const DEFAULT_APP_SETTINGS_VALUES = {
   },
   landing: {
     heroEyebrow: "A calmer study workspace for serious students",
-    heroTitle: "Calm, intelligent study flow for every subject.",
+    heroTitle: "Calm study flow for every subject.",
     heroDescription:
       "StudyOS brings notes, doubts, quizzes, planners, flashcards, mind maps, and progress into one quiet workspace so students can think clearly and move consistently.",
     heroPanelEyebrow: "Today in StudyOS",
@@ -57,7 +57,7 @@ export const DEFAULT_APP_SETTINGS_VALUES = {
         description: "Chat-style tutor that explains step by step using your selected subject."
       },
       {
-        title: "Smart Planner",
+        title: "Study Planner",
         iconKey: "calendar",
         description: "Date-aware schedules that prioritize exams and balance study load."
       },
@@ -79,7 +79,7 @@ export const DEFAULT_APP_SETTINGS_VALUES = {
       {
         title: "Mind Maps",
         iconKey: "topology",
-        description: "Auto-generated concept maps you can drag, zoom, and export as PNG."
+        description: "Concept maps you can drag, zoom, and export as PNG."
       },
       {
         title: "Progress",
@@ -90,7 +90,7 @@ export const DEFAULT_APP_SETTINGS_VALUES = {
     testimonials: [
       {
         name: "Aarav",
-        text: "The notes feel clean enough to study from immediately, not like auto-generated text dropped into a page."
+        text: "The notes feel clean enough to study from immediately, not like rough draft text dropped into a page."
       },
       {
         name: "Isha",

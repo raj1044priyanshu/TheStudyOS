@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { CLASS_OPTIONS, SUBJECTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
@@ -84,21 +85,7 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
       return;
     }
 
-    if (data.events?.levelUp?.happened) {
-      toast.success(`Level up! You reached level ${data.events.levelUp.to}`);
-    }
-
-    if (data.events?.streakUpdated?.current > data.events?.streakUpdated?.previous) {
-      toast.success("Streak increased");
-    }
-
-    if (data.events?.streakMilestone?.happened && data.events?.streakMilestone?.milestone) {
-      toast.success(`${data.events.streakMilestone.milestone}-day streak reached`);
-    }
-
-    for (const achievement of data.events?.newAchievements ?? []) {
-      toast.success(`Achievement unlocked: ${achievement.title}`);
-    }
+    queueCelebrationsFromGamification(data.events, "notes");
 
     window.dispatchEvent(new CustomEvent("tour:note-generated"));
     if (typeof data.visuals?.generated === "number" && data.visuals.generated > 0) {

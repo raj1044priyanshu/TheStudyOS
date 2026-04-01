@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { NextStepCard } from "@/components/shared/NextStepCard";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { getHubHref } from "@/lib/hubs";
 
 interface ScanAnalysis {
@@ -110,6 +111,7 @@ export function Scanner() {
         throw new Error(data.error ?? "Could not analyze this image");
       }
       setAnalysis(data);
+      queueCelebrationsFromGamification(data.events, "scanner");
       setActiveTab(data.errors?.length ? "errors" : "transcription");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not analyze this image");

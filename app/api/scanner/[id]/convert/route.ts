@@ -3,7 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, routeError } from "@/lib/api";
 import { ScanResultModel } from "@/models/ScanResult";
 import { NoteModel } from "@/models/Note";
-import { generateContentWithMetadata } from "@/lib/gemini";
+import { generateTextWithMetadata as generateContentWithMetadata } from "@/lib/content-service";
 import { scheduleRevisionItem } from "@/lib/revision";
 import { extractFormulasFromNote, upsertFormulaEntry } from "@/lib/formula-sheet";
 import { upsertConceptNode } from "@/lib/knowledge-graph";

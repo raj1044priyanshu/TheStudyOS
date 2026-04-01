@@ -1,25 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { IconCircleCheckFilled, IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 import { usePlanner } from "@/hooks/usePlanner";
 import { Button } from "@/components/ui/button";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { PlannerAssistant } from "@/components/planner/PlannerAssistant";
-import { PlannerCheckpointDialog } from "@/components/planner/PlannerCheckpointDialog";
+import { PlannerSetupPanel } from "@/components/planner/PlannerSetupPanel";
+import { buildPlannerQuizHref } from "@/lib/planner-utils";
 import type { PlannerDetails, StudyTask } from "@/types";
 
-interface CheckpointTarget {
-  date: string;
-  taskIndex: number;
-  task: StudyTask;
-}
-
 export function PlannerView() {
-  const [checkpointTarget, setCheckpointTarget] = useState<CheckpointTarget | null>(null);
+  const router = useRouter();
   const { plans, selectedPlan, plan, loading, bootstrapping, generate, selectPlan, removePlan, updateSelectedPlan } = usePlanner();
 
   const planProgress = useMemo(() => {
@@ -46,6 +42,13 @@ export function PlannerView() {
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
+      if (data.selectedPlan) {
+        updateSelectedPlan(data.selectedPlan);
+      }
+      if (data.reason === "checkpoint_required" && data.redirectTo) {
+        router.push(data.redirectTo);
+        return;
+      }
       toast.error(data.error ?? "Could not update task");
       return;
     }
@@ -53,27 +56,7 @@ export function PlannerView() {
     if (data.selectedPlan) {
       updateSelectedPlan(data.selectedPlan);
     }
-  }
-
-  async function markTaskStudied(date: string, taskIndex: number) {
-    if (!selectedPlan?._id) return;
-
-    const response = await fetch("/api/planner", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ planId: selectedPlan._id, date, taskIndex, action: "mark-studied" })
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      toast.error(data.error ?? "Could not unlock checkpoint");
-      return;
-    }
-
-    if (data.selectedPlan) {
-      updateSelectedPlan(data.selectedPlan);
-    }
-    toast.success("Checkpoint unlocked for this chapter");
+    queueCelebrationsFromGamification(data.events, "planner-task");
   }
 
   async function deleteCurrentPlan() {
@@ -128,35 +111,31 @@ export function PlannerView() {
       );
     }
 
-    if (task.checkpointStatus === "checkpoint_required" || task.checkpointStatus === "revise_again") {
-      return (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            onClick={() =>
-              setCheckpointTarget({
-                date: dayDate,
-                taskIndex,
-                task
-              })
-            }
-          >
-            {task.checkpointStatus === "revise_again" ? "Retry checkpoint" : "Take checkpoint"}
-          </Button>
-          {task.checkpointStatus === "revise_again" ? (
-            <span className="inline-flex items-center rounded-full bg-[#FCA5A5]/14 px-3 py-1.5 text-xs font-medium text-[#B91C1C]">
-              Revise again first
-            </span>
-          ) : null}
-        </div>
-      );
-    }
-
     return (
-      <Button type="button" size="sm" className="mt-3" onClick={() => void markTaskStudied(dayDate, taskIndex)}>
-        I&apos;ve studied this
-      </Button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          type="button"
+          size="sm"
+          onClick={() =>
+            router.push(
+              buildPlannerQuizHref({
+                subject: task.subject,
+                topic: task.chapter ?? task.topic,
+                planId: activePlan._id,
+                date: dayDate,
+                taskIndex
+              })
+            )
+          }
+        >
+          {task.checkpointStatus === "revise_again" ? "Retry in Test" : "Go to Test"}
+        </Button>
+        {task.checkpointStatus === "revise_again" ? (
+          <span className="inline-flex items-center rounded-full bg-[#FCA5A5]/14 px-3 py-1.5 text-xs font-medium text-[#B91C1C]">
+            Revise and retry
+          </span>
+        ) : null}
+      </div>
     );
   }
 
@@ -175,7 +154,7 @@ export function PlannerView() {
 
   return (
     <div className="space-y-5">
-      <PlannerAssistant loading={loading} onGenerate={generate} />
+      <PlannerSetupPanel loading={loading} onGenerate={generate} />
 
       <div className="glass-card p-5 sm:p-6">
         <h3 className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Saved schedules</h3>
@@ -244,7 +223,7 @@ export function PlannerView() {
                 <h4 className="mt-2 font-headline text-[clamp(2rem,5vw,2.5rem)] tracking-[-0.03em] text-[var(--foreground)]">Study grid</h4>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm text-[var(--muted-foreground)]">Chapter completion unlocks only after passing the checkpoint.</p>
+                <p className="text-sm text-[var(--muted-foreground)]">Chapter completion unlocks only after passing the linked test.</p>
                 <Link id="focus-room-link" href="/dashboard/study?tool=focus-room" className="text-sm font-medium text-[#7B6CF6]">
                   <span className="inline-flex items-center gap-1.5">
                     <IconPlayerPlay className="h-3.5 w-3.5" />
@@ -322,22 +301,6 @@ export function PlannerView() {
           </div>
         </div>
       )}
-
-      {checkpointTarget && selectedPlan?._id ? (
-        <PlannerCheckpointDialog
-          open={Boolean(checkpointTarget)}
-          onClose={() => setCheckpointTarget(null)}
-          planId={selectedPlan._id}
-          date={checkpointTarget.date}
-          taskIndex={checkpointTarget.taskIndex}
-          subject={checkpointTarget.task.subject}
-          chapter={checkpointTarget.task.chapter ?? checkpointTarget.task.topic}
-          board={selectedPlan.studyContext?.board ?? ""}
-          className={selectedPlan.studyContext?.className ?? ""}
-          stream={selectedPlan.studyContext?.stream ?? ""}
-          onPlanUpdated={(planPayload) => updateSelectedPlan(planPayload)}
-        />
-      ) : null}
     </div>
   );
 }

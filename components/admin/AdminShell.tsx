@@ -14,6 +14,7 @@ import {
   IconShield,
   IconUsers
 } from "@tabler/icons-react";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/shared/Logo";
@@ -50,7 +51,10 @@ export function AdminShell({ children, user }: Props) {
             <Link href="/admin">
               <Logo className="px-1" textClassName="text-[34px]" subtitleClassName="max-w-[13rem]" />
             </Link>
-            <p className="mt-5 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Admin Control Plane</p>
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Admin Control Plane</p>
+              <CompanionBadge pose="thinking" size={52} className="shrink-0" />
+            </div>
             <nav className="mt-5 flex-1 space-y-2 overflow-y-auto pr-2">
               {NAV_ITEMS.map((item) => {
                 const active = pathname === item.href;

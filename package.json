@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^2.0.4",
-    "@google/genai": "^1.46.0",
     "@tabler/icons-react": "^3.40.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
@@ -29,7 +28,6 @@
     "date-fns": "^4.1.0",
     "driver.js": "^1.4.0",
     "framer-motion": "^12.38.0",
-    "groq-sdk": "^1.1.1",
     "heic2any": "^0.0.4",
     "html2canvas": "^1.4.1",
     "idb": "^8.0.3",

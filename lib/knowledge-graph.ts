@@ -1,5 +1,5 @@
 import { ConceptNodeModel } from "@/models/ConceptNode";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import type { ConceptRelation } from "@/types";
 
 export async function generateRelatedConcepts(conceptName: string, subject: string) {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
-import { generatePlainTextWithFallback } from "@/lib/ai";
+import { generateTextWithFallback as generatePlainTextWithFallback } from "@/lib/content-service";
 import { markFeatureUsed } from "@/lib/progress";
 
 const schema = z.object({

@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { QuizCard } from "@/components/quiz/QuizCard";
 import { QuizResults } from "@/components/quiz/QuizResults";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import type { QuizQuestion } from "@/types";
 
@@ -81,10 +82,17 @@ export default function DashboardQuizPlayPage({ params }: { params: { id: string
       return;
     }
 
+    if (data.plannerCheckpoint?.passed) {
+      toast.success("Planner chapter cleared.");
+    } else if (data.plannerCheckpoint) {
+      toast.error("Planner chapter still needs work. Revise and retry in Test.");
+    }
+
     setFinalScore({
       score: data.result?.correctCount ?? score,
       total: data.result?.totalQuestions ?? quizData.questions.length
     });
+    queueCelebrationsFromGamification(data.events, "quiz");
     setSubmitted(true);
   }
 

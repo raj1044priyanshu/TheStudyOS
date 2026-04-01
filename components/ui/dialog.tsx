@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import { IconX } from "@tabler/icons-react";
+import { StudyCompanion, type CompanionPose } from "@/components/companion/StudyCompanion";
 import { cn } from "@/lib/utils";
 
 const sizeClasses = {
@@ -23,6 +24,7 @@ interface DialogProps {
   className?: string;
   closeButtonTourId?: string;
   dialogTourId?: string;
+  companionPose?: CompanionPose;
 }
 
 export function Dialog({
@@ -36,7 +38,8 @@ export function Dialog({
   bodyClassName,
   className,
   closeButtonTourId,
-  dialogTourId
+  dialogTourId,
+  companionPose = "wave"
 }: DialogProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -115,7 +118,11 @@ export function Dialog({
           onClick={(event) => event.stopPropagation()}
         >
           <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[color:var(--panel-border)] bg-[color:var(--glass-surface-strong)] px-5 py-4 backdrop-blur-xl sm:px-6">
-            <div className="min-w-0">
+            <div className="flex min-w-0 items-start gap-4">
+              <div className="hidden rounded-[24px] border border-[color:var(--panel-border)] bg-[color:var(--surface-panel)] p-1 shadow-[var(--panel-shadow)] sm:block">
+                <StudyCompanion pose={companionPose} size={88} compact />
+              </div>
+              <div className="min-w-0">
               <h3 id={titleId} className="font-headline text-[1.95rem] tracking-[-0.03em] text-[var(--foreground)]">
                 {title}
               </h3>
@@ -124,6 +131,7 @@ export function Dialog({
                   {description}
                 </p>
               ) : null}
+              </div>
             </div>
             <button
               ref={closeButtonRef}

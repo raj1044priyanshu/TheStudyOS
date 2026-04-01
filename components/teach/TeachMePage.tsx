@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { NextStepCard } from "@/components/shared/NextStepCard";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { SUBJECTS } from "@/lib/constants";
-import { triggerAchievementCheck } from "@/lib/client-achievements";
 import { getHubHref } from "@/lib/hubs";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,7 @@ interface SessionSummary {
   correctPoints: string[];
   missedPoints: string[];
   misconceptions: Array<{ text: string; correction: string }>;
-  aiSimplifiedExplanation: string;
+  referenceExplanation: string;
   encouragement?: string;
   createdAt: string;
 }
@@ -33,7 +33,7 @@ interface EvaluationPayload {
   correctPoints: string[];
   missedPoints: string[];
   misconceptions: Array<{ text: string; correction: string }>;
-  aiSimplifiedExplanation: string;
+  referenceExplanation: string;
   encouragement?: string;
   previousScore?: number | null;
   improvementDelta?: number | null;
@@ -99,7 +99,7 @@ export function TeachMePage() {
     }
     setResult(data.evaluation);
     void loadHistory();
-    void triggerAchievementCheck("teachme_completed");
+    queueCelebrationsFromGamification(data.events, "teach-me");
     if (data.evaluation?.understandingScore === 100) {
       void confetti({ particleCount: 120, spread: 70, origin: { y: 0.6 } });
     }
@@ -245,7 +245,7 @@ export function TeachMePage() {
 
             <details className="glass-card rounded-[24px] p-5" open>
               <summary className="cursor-pointer text-lg font-semibold text-[#7B6CF6]">The Simple Explanation</summary>
-              <p className="mt-4 text-sm leading-7 text-[var(--foreground)]">{result.aiSimplifiedExplanation}</p>
+              <p className="mt-4 text-sm leading-7 text-[var(--foreground)]">{result.referenceExplanation}</p>
               <p className="mt-3 text-sm text-[var(--muted-foreground)]">Compare this with what you wrote and notice the gaps in structure, accuracy, and clarity.</p>
             </details>
 
@@ -298,7 +298,7 @@ export function TeachMePage() {
                 correctPoints: session.correctPoints,
                 missedPoints: session.missedPoints,
                 misconceptions: session.misconceptions,
-                aiSimplifiedExplanation: session.aiSimplifiedExplanation,
+                referenceExplanation: session.referenceExplanation,
                 encouragement: session.encouragement ?? ""
               })
             }

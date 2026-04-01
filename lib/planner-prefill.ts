@@ -1,12 +1,15 @@
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
+import { resolvePlannerTemplateSubjects } from "@/lib/planner-templates";
+import { extractPdfText } from "@/lib/server/pdf-text";
 import { normalizeTopicList, toDateInput } from "@/lib/planner-utils";
-import type { PlannerConfirmedExamInput, StudyTask } from "@/types";
+import type { PlannerConfirmedExamInput, StudyTask, StudyStream } from "@/types";
 
 const CBSE_CURRICULUM_URL = "https://www.cbseacademic.nic.in/curriculum18.html";
 const CBSE_EXAM_CIRCULARS_URL = "https://www.cbse.gov.in/cbsenew/examination_circular.html";
 
 const syllabusCache = new Map<string, string[]>();
-const datesheetCache = new Map<string, Record<string, string>>();
+const datesheetCache = new Map<string, { map: Record<string, string>; matchedYear: boolean }>();
+const pdfTextCache = new Map<string, string>();
 
 const SUBJECT_ALIASES: Record<string, string[]> = {
   Mathematics: ["mathematics", "math"],
@@ -26,13 +29,18 @@ const SUBJECT_ALIASES: Record<string, string[]> = {
   Other: ["other"]
 };
 
-export interface PlannerAssistantExamRecord {
-  _id: string;
+export interface PlannerPrefillExamRecord {
+  _id?: string;
   subject: string;
   examName: string;
   examDate: string;
   board?: string | null;
   syllabus?: string[];
+}
+
+interface ClassTwelveDatesheetCandidate {
+  href: string;
+  text: string;
 }
 
 function normalizeSubjectKey(value: string) {
@@ -61,7 +69,7 @@ function absoluteUrl(base: string, href: string) {
 async function fetchText(url: string) {
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "StudyOS Planner Assistant"
+      "User-Agent": "StudyOS Planner Prefill"
     },
     cache: "no-store"
   });
@@ -74,9 +82,13 @@ async function fetchText(url: string) {
 }
 
 async function fetchPdfText(url: string) {
+  if (pdfTextCache.has(url)) {
+    return pdfTextCache.get(url) ?? "";
+  }
+
   const response = await fetch(url, {
     headers: {
-      "User-Agent": "StudyOS Planner Assistant"
+      "User-Agent": "StudyOS Planner Prefill"
     },
     cache: "no-store"
   });
@@ -85,18 +97,16 @@ async function fetchPdfText(url: string) {
     throw new Error(`PDF request failed for ${url}`);
   }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
-  const { PDFParse } = await import("pdf-parse");
-  const parser = new PDFParse({ data: buffer });
-  const extracted = await parser.getText();
-  await parser.destroy();
-  return extracted.text?.trim() ?? "";
+  const extractedText = await extractPdfText(Buffer.from(await response.arrayBuffer()));
+  pdfTextCache.set(url, extractedText);
+  return extractedText;
 }
 
-async function findLatestClassTwelveDatesheetUrl() {
+async function findClassTwelveDatesheetCandidates() {
   const html = await fetchText(CBSE_EXAM_CIRCULARS_URL);
   const pattern = /href="([^"]+\.pdf)"[^>]*>([\s\S]*?)<\/a>/gi;
-  const candidates: Array<{ href: string; text: string }> = [];
+  const candidates: ClassTwelveDatesheetCandidate[] = [];
+  const seen = new Set<string>();
 
   for (const match of html.matchAll(pattern)) {
     const href = match[1];
@@ -104,27 +114,65 @@ async function findLatestClassTwelveDatesheetUrl() {
     const normalized = text.toLowerCase();
 
     if (normalized.includes("datesheet class xii") || normalized.includes("date sheet for class x and xii")) {
-      candidates.push({ href: absoluteUrl(CBSE_EXAM_CIRCULARS_URL, href), text });
+      const absoluteHref = absoluteUrl(CBSE_EXAM_CIRCULARS_URL, href);
+      if (!seen.has(absoluteHref)) {
+        seen.add(absoluteHref);
+        candidates.push({ href: absoluteHref, text });
+      }
     }
   }
 
-  return candidates[0]?.href ?? null;
+  return candidates;
 }
 
-async function loadClassTwelveDatesheetMap(subjects: string[]) {
-  const cacheKey = subjects.map((subject) => normalizeSubjectKey(subject)).sort().join("|");
+function candidateMentionsYear(candidate: ClassTwelveDatesheetCandidate, examYear: number) {
+  const haystack = `${candidate.text} ${candidate.href}`.toLowerCase();
+  return haystack.includes(String(examYear));
+}
+
+async function resolveClassTwelveDatesheet(examYear: number) {
+  const candidates = await findClassTwelveDatesheetCandidates();
+  if (!candidates.length) {
+    return { pdfUrl: null, sourceText: "", matchedYear: false };
+  }
+
+  const metadataMatch = candidates.find((candidate) => candidateMentionsYear(candidate, examYear));
+  if (metadataMatch) {
+    return {
+      pdfUrl: metadataMatch.href,
+      sourceText: await fetchPdfText(metadataMatch.href).catch(() => ""),
+      matchedYear: true
+    };
+  }
+
+  for (const candidate of candidates.slice(0, 5)) {
+    const sourceText = await fetchPdfText(candidate.href).catch(() => "");
+    if (sourceText && sourceText.includes(String(examYear))) {
+      return { pdfUrl: candidate.href, sourceText, matchedYear: true };
+    }
+  }
+
+  const fallback = candidates[0];
+  return {
+    pdfUrl: fallback.href,
+    sourceText: await fetchPdfText(fallback.href).catch(() => ""),
+    matchedYear: false
+  };
+}
+
+async function loadClassTwelveDatesheetMap(subjects: string[], examYear: number) {
+  const cacheKey = `${examYear}:${subjects.map((subject) => normalizeSubjectKey(subject)).sort().join("|")}`;
   if (datesheetCache.has(cacheKey)) {
-    return datesheetCache.get(cacheKey) ?? {};
+    return datesheetCache.get(cacheKey) ?? { map: {}, matchedYear: false };
   }
 
-  const pdfUrl = await findLatestClassTwelveDatesheetUrl();
+  const { pdfUrl, sourceText, matchedYear } = await resolveClassTwelveDatesheet(examYear);
   if (!pdfUrl) {
-    return {};
+    return { map: {}, matchedYear: false };
   }
 
-  const sourceText = await fetchPdfText(pdfUrl);
   if (!sourceText) {
-    return {};
+    return { map: {}, matchedYear };
   }
 
   const result = await generateJsonWithFallback<Array<{ subject: string; examDate: string }>>({
@@ -151,8 +199,9 @@ Rules:
   const map = Object.fromEntries(
     (result.data ?? []).map((item) => [normalizeSubjectKey(item.subject), item.examDate]).filter((item) => item[1])
   );
-  datesheetCache.set(cacheKey, map);
-  return map;
+  const payload = { map, matchedYear };
+  datesheetCache.set(cacheKey, payload);
+  return payload;
 }
 
 async function findSyllabusLink(subject: string) {
@@ -229,18 +278,27 @@ Rules:
 
 export async function enrichCbseExams({
   className,
+  examYear,
   exams
 }: {
   className: string;
-  exams: PlannerAssistantExamRecord[];
+  examYear: number;
+  exams: PlannerPrefillExamRecord[];
 }) {
   const isClassTwelve = className === "Class 12";
-  const dateMap = isClassTwelve ? await loadClassTwelveDatesheetMap(exams.map((exam) => exam.subject)) : {};
+  const { map: dateMap, matchedYear } = isClassTwelve
+    ? await loadClassTwelveDatesheetMap(exams.map((exam) => exam.subject), examYear)
+    : { map: {}, matchedYear: false };
   const notes: string[] = [];
+
+  if (isClassTwelve && !matchedYear) {
+    notes.push(`No exact Class XII CBSE datesheet match for ${examYear} was found. StudyOS used the latest available CBSE datesheet instead.`);
+  }
 
   const confirmedExams: PlannerConfirmedExamInput[] = [];
 
   for (const exam of exams) {
+    const savedExamDate = toDateInput(exam.examDate);
     const officialExamDate = dateMap[normalizeSubjectKey(exam.subject)] ?? null;
     const officialChapters = await loadCbseSyllabusChapters(exam.subject, className).catch(() => []);
     const savedChapters = normalizeTopicList(exam.syllabus ?? []);
@@ -250,24 +308,117 @@ export async function enrichCbseExams({
       notes.push(`No official chapter list was found for ${exam.subject}. Add or edit chapters manually before generating the plan.`);
     }
 
-    if (officialExamDate && officialExamDate !== toDateInput(exam.examDate)) {
-      notes.push(`${exam.subject} has a saved date of ${toDateInput(exam.examDate)} but the latest CBSE datesheet suggests ${officialExamDate}.`);
+    if (officialExamDate && officialExamDate !== savedExamDate) {
+      notes.push(
+        savedExamDate
+          ? `${exam.subject} has a saved date of ${savedExamDate} but the latest CBSE datesheet suggests ${officialExamDate}.`
+          : `${exam.subject} picked up an official CBSE datesheet date of ${officialExamDate}.`
+      );
     }
 
     confirmedExams.push({
       examId: exam._id,
       subject: exam.subject,
       examName: exam.examName,
-      examDate: toDateInput(exam.examDate),
+      examDate: officialExamDate ?? savedExamDate,
       board: exam.board ?? "CBSE",
       chapters,
       source: savedChapters.length && officialChapters.length ? "saved+official" : savedChapters.length ? "saved" : officialChapters.length ? "official" : "manual",
       officialExamDate,
       notes:
-        officialExamDate && officialExamDate !== toDateInput(exam.examDate)
-          ? `Official CBSE datesheet currently points to ${officialExamDate}.`
+        officialExamDate && officialExamDate !== savedExamDate
+          ? savedExamDate
+            ? `Official CBSE datesheet currently points to ${officialExamDate}.`
+            : `Official CBSE datesheet currently points to ${officialExamDate}.`
           : undefined
     });
+  }
+
+  return { confirmedExams, notes };
+}
+
+function buildAutoExamName({
+  board,
+  className,
+  examYear,
+  subject
+}: {
+  board: string;
+  className: string;
+  examYear: number;
+  subject: string;
+}) {
+  if (board.trim().toUpperCase() === "CBSE" && className === "Class 12") {
+    return `CBSE Board Exam ${examYear}`;
+  }
+
+  return `${board} ${className} ${examYear} ${subject} Exam`;
+}
+
+export async function buildAutoPlannerExams({
+  className,
+  board,
+  stream,
+  examYear,
+  profileSubjects = []
+}: {
+  className: string;
+  board: string;
+  stream?: StudyStream | "";
+  examYear: number;
+  profileSubjects?: string[];
+}) {
+  const subjects = resolvePlannerTemplateSubjects({ stream, profileSubjects });
+  if (!subjects.length) {
+    return {
+      confirmedExams: [] as PlannerConfirmedExamInput[],
+      notes: ["No subjects were available for this flow. Add your subjects in onboarding/profile before preparing the plan."]
+    };
+  }
+
+  const upperBoard = board.trim().toUpperCase();
+
+  if (upperBoard === "CBSE" && className === "Class 12") {
+    return enrichCbseExams({
+      className,
+      examYear,
+      exams: subjects.map((subject) => ({
+        subject,
+        examName: buildAutoExamName({ board: "CBSE", className, examYear, subject }),
+        examDate: "",
+        board: "CBSE",
+        syllabus: []
+      }))
+    });
+  }
+
+  const confirmedExams: PlannerConfirmedExamInput[] = [];
+  const notes: string[] = [];
+
+  for (const subject of subjects) {
+    const officialChapters = upperBoard === "CBSE" ? await loadCbseSyllabusChapters(subject, className).catch(() => []) : [];
+
+    confirmedExams.push({
+      subject,
+      examName: buildAutoExamName({ board, className, examYear, subject }),
+      examDate: "",
+      board,
+      chapters: officialChapters,
+      source: officialChapters.length ? "official" : "manual",
+      notes: officialChapters.length
+        ? `Confirm the exam date for ${examYear} before generating the plan.`
+        : `Confirm the exam date for ${examYear} and add chapters manually before generating the plan.`
+    });
+
+    if (!officialChapters.length) {
+      notes.push(`No official chapter list was found for ${subject}. Add chapters manually before generating the plan.`);
+    }
+  }
+
+  if (upperBoard === "CBSE") {
+    notes.push(`CBSE ${className} chapter lists were prefilled where available, but exam dates for ${examYear} still need confirmation.`);
+  } else {
+    notes.push(`Official ${board} exam dates and chapters were not available, so every exam stays fully editable for manual confirmation.`);
   }
 
   return { confirmedExams, notes };

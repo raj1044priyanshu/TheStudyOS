@@ -6,7 +6,7 @@ const DoubtsSessionSchema = new Schema(
     messages: {
       type: [
         {
-          role: { type: String, enum: ["user", "assistant"], required: true },
+          role: { type: String, enum: ["user", "guide", "assistant"], required: true },
           content: { type: String, required: true },
           timestamp: { type: Date, default: Date.now }
         }

@@ -1,4 +1,4 @@
-import { generateImageWithMetadata } from "@/lib/gemini";
+import { generateImageWithMetadata } from "@/lib/content-service";
 import { uploadNoteVisualImage } from "@/lib/cloudinary";
 import type { NoteVisual } from "@/types";
 

@@ -15,6 +15,8 @@ import {
 } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CompanionPanel } from "@/components/companion/StudyCompanion";
+import { queueStreakBreakAlert } from "@/lib/client-celebrations";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
 import { getHubHref } from "@/lib/hubs";
 
@@ -28,6 +30,10 @@ interface DashboardPayload {
     totalQuizzesTaken: number;
     studyMinutesWeek: number;
   };
+  streakBreakAlert?: {
+    previous: number;
+    brokenAt: string | null;
+  } | null;
 }
 
 interface BriefPayload {
@@ -96,6 +102,7 @@ export function DashboardHome() {
 
       if (dashboardResponse.ok && dashboardPayload) {
         setDashboard(dashboardPayload);
+        queueStreakBreakAlert(dashboardPayload.streakBreakAlert ?? null);
       }
       if (briefResponse.ok && briefPayload) {
         setBrief(briefPayload);
@@ -201,11 +208,22 @@ export function DashboardHome() {
   return (
     <div className="space-y-6 md:space-y-8">
       <section className="glass-card rounded-[28px] p-5 sm:p-6 md:p-8">
-        <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Home</p>
-        <h1 className="mt-2 font-headline text-[clamp(2rem,6vw,3rem)] tracking-[-0.05em] text-[var(--foreground)]">
-          Good morning, {preferredName}
-        </h1>
-        <p className="mt-2 text-base text-[var(--muted-foreground)]">{brief?.dateLabel ?? "Your workspace is loading."}</p>
+        <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Home</p>
+            <h1 className="mt-2 font-headline text-[clamp(2rem,6vw,3rem)] tracking-[-0.05em] text-[var(--foreground)]">
+              Good morning, {preferredName}
+            </h1>
+            <p className="mt-2 text-base text-[var(--muted-foreground)]">{brief?.dateLabel ?? "Your workspace is loading."}</p>
+          </div>
+          <CompanionPanel
+            pose="wave"
+            eyebrow="Today"
+            title="Ready for your next study win?"
+            description="Keep streaks, focus sessions, and the next useful action in view as you move through the day."
+            compact
+          />
+        </div>
       </section>
 
       <section className="space-y-4">

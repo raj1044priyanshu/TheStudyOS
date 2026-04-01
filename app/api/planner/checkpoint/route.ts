@@ -3,7 +3,7 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import { logActivity } from "@/lib/progress";
 import { StudyPlanModel } from "@/models/StudyPlan";
 import { PlannerCheckpointModel } from "@/models/PlannerCheckpoint";

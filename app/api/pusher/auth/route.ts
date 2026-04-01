@@ -5,8 +5,10 @@ import { isPusherConfigured, pusherServer } from "@/lib/pusher";
 async function parseChannelAuthorizationPayload(request: Request) {
   const formRequest = request.clone();
   const form = await formRequest.formData().catch(() => null);
-  const socketId = typeof form?.get("socket_id") === "string" ? form.get("socket_id")?.trim() ?? "" : "";
-  const channelName = typeof form?.get("channel_name") === "string" ? form.get("channel_name")?.trim() ?? "" : "";
+  const socketIdEntry = form?.get("socket_id");
+  const channelNameEntry = form?.get("channel_name");
+  const socketId = typeof socketIdEntry === "string" ? socketIdEntry.trim() : "";
+  const channelName = typeof channelNameEntry === "string" ? channelNameEntry.trim() : "";
 
   if (socketId && channelName) {
     return { socketId, channelName };

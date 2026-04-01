@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { StudyCompanion } from "@/components/companion/StudyCompanion";
 import type { HubLayoutProps, HubPhase, HubToolId } from "@/types";
 import { cn } from "@/lib/utils";
 import { normalizeHubTool } from "@/lib/hubs";
@@ -31,9 +32,18 @@ export function HubLayout({ phase, title, subtitle, stats, tabs = [], defaultTab
   return (
     <div className="space-y-4 sm:space-y-5">
       <section id={`hub-header-${phase}`} className="glass-card rounded-[26px] p-5 sm:p-6 lg:p-7">
-        <div className="max-w-4xl">
-          <h1 className="font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.05em] text-[var(--foreground)]">{title}</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)] sm:text-base sm:leading-7">{subtitle}</p>
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-4xl">
+            <h1 className="font-headline text-[clamp(2rem,5vw,3rem)] tracking-[-0.05em] text-[var(--foreground)]">{title}</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)] sm:text-base sm:leading-7">{subtitle}</p>
+          </div>
+          <div className="self-start rounded-[28px] border border-[color:var(--panel-border)] bg-[color:var(--hero-panel)] p-2 shadow-[var(--panel-shadow)]">
+            <StudyCompanion
+              pose={phase === "plan" ? "thinking" : phase === "study" ? "wave" : phase === "test" ? "sparkle" : phase === "revise" ? "cheer" : "sleepy-focus"}
+              size={120}
+              compact
+            />
+          </div>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2.5">
@@ -41,7 +51,7 @@ export function HubLayout({ phase, title, subtitle, stats, tabs = [], defaultTab
             const Icon = item.icon;
             return (
               <div key={item.label} className="surface-card inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-sm text-[var(--foreground)]">
-                <Icon className="h-4 w-4 text-[#7B6CF6]" />
+                <Icon className="h-4 w-4 text-[color:var(--brand-500)]" />
                 <span>{item.label}</span>
               </div>
             );
@@ -65,8 +75,8 @@ export function HubLayout({ phase, title, subtitle, stats, tabs = [], defaultTab
                     className={cn(
                       "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-150 sm:px-5",
                       active
-                        ? "bg-[#7B6CF6] text-white shadow-[0_4px_12px_rgba(123,108,246,0.3)]"
-                        : "bg-[rgba(123,108,246,0.08)] text-[var(--muted-foreground)] hover:bg-[rgba(123,108,246,0.15)] hover:text-[var(--foreground)]"
+                        ? "bg-[color:var(--brand-500)] text-[color:var(--primary-foreground)] shadow-[var(--primary-shadow)]"
+                        : "bg-[color:var(--brand-soft)] text-[var(--muted-foreground)] hover:bg-[color:var(--secondary-button-hover)] hover:text-[var(--foreground)]"
                     )}
                   >
                     <Icon className="h-4 w-4" />

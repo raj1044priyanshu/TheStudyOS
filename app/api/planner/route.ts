@@ -3,15 +3,15 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit, parseJsonString } from "@/lib/api";
-import { generateContent } from "@/lib/gemini";
+import { generateText as generateContent } from "@/lib/content-service";
 import { StudyPlanModel } from "@/models/StudyPlan";
 import { ExamModel } from "@/models/Exam";
 import { evaluateAchievements, logActivity } from "@/lib/progress";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { UserModel } from "@/models/User";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
-import { buildChapterPlan } from "@/lib/planner-assistant";
-import { normalizeTopicList } from "@/lib/planner-utils";
+import { buildChapterPlan } from "@/lib/planner-prefill";
+import { buildPlannerQuizHref, normalizeTopicList } from "@/lib/planner-utils";
 
 const subjectSchema = z.object({
   name: z.string().min(2),
@@ -36,7 +36,8 @@ const studyContextSchema = z.object({
   board: z.string().min(2),
   stream: z.enum(["Science", "Commerce", "Humanities", "Other"]).optional().or(z.literal("")),
   studyHoursPerDay: z.number().min(1).max(16),
-  startDate: z.string().min(1)
+  startDate: z.string().min(1),
+  examYear: z.number().int().min(2000).max(2100).optional()
 });
 
 const postSchema = z.object({
@@ -45,7 +46,7 @@ const postSchema = z.object({
   hoursPerDay: z.number().min(1).max(16),
   startDate: z.string(),
   focusTopics: z.array(z.string().trim().min(2).max(80)).max(12).optional(),
-  prefillSource: z.enum(["manual", "autopsy", "exam", "upcoming-exams", "assistant"]).optional(),
+  prefillSource: z.enum(["manual", "autopsy", "exam", "upcoming-exams", "prefill", "assistant"]).optional(),
   studyContext: studyContextSchema.optional(),
   confirmedExams: z.array(confirmedExamSchema).max(24).optional()
 });
@@ -93,6 +94,7 @@ interface PlannerDoc {
     stream?: string;
     studyHoursPerDay?: number;
     startDate?: string;
+    examYear?: number | null;
   } | null;
   subjects: {
     name: string;
@@ -347,11 +349,12 @@ Respond in this EXACT JSON format:
       ? {
           className: studyContext.className,
           board: studyContext.board,
-          stream: studyContext.stream ?? "",
-          studyHoursPerDay: studyContext.studyHoursPerDay,
-          startDate: studyContext.startDate
-        }
-      : undefined,
+        stream: studyContext.stream ?? "",
+        studyHoursPerDay: studyContext.studyHoursPerDay,
+        startDate: studyContext.startDate,
+        examYear: studyContext.examYear ?? null
+      }
+    : undefined,
     subjects: effectiveSubjects.map((item) => ({
       name: item.name,
       hoursPerDay,
@@ -459,7 +462,29 @@ export async function PATCH(request: Request) {
     }
   } else {
     if (completed && task.type !== "break" && task.checkpointStatus !== "passed") {
-      return NextResponse.json({ error: "Pass the chapter checkpoint before marking this complete" }, { status: 400 });
+      if (task.checkpointStatus !== "revise_again") {
+        task.checkpointStatus = "checkpoint_required";
+        await plan.save();
+      }
+
+      const redirectTo = buildPlannerQuizHref({
+        subject: task.subject,
+        topic: task.chapter ?? task.topic,
+        planId: plan._id.toString(),
+        date,
+        taskIndex
+      });
+
+      return NextResponse.json(
+        {
+          error: "Pass the chapter checkpoint before marking this complete",
+          reason: "checkpoint_required",
+          redirectTo,
+          selectedPlan: plannerDetails(plan.toObject() as unknown as PlannerDoc),
+          summary: plannerSummary(plan.toObject() as unknown as PlannerDoc)
+        },
+        { status: 409 }
+      );
     }
     task.completed = completed;
   }

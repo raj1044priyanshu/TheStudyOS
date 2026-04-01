@@ -35,22 +35,22 @@ export function useDoubts(subject: string) {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let aiContent = "";
+      let guideContent = "";
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "", timestamp: new Date().toISOString() } satisfies DoubtMessage
+        { role: "guide", content: "", timestamp: new Date().toISOString() } satisfies DoubtMessage
       ]);
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        aiContent += decoder.decode(value, { stream: true });
+        guideContent += decoder.decode(value, { stream: true });
         setMessages((prev) => {
           const copy = [...prev];
           const idx = copy.length - 1;
           if (idx >= 0) {
-            copy[idx] = { ...copy[idx], content: aiContent };
+            copy[idx] = { ...copy[idx], content: guideContent };
           }
           return copy;
         });

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, routeError } from "@/lib/api";
 import { FormulaSheetModel } from "@/models/FormulaSheet";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import type { QuizQuestion } from "@/types";
 
 const schema = z.object({

@@ -8,8 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog } from "@/components/ui/dialog";
 import { Select } from "@/components/ui/select";
 import { NextStepCard } from "@/components/shared/NextStepCard";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { SUBJECTS } from "@/lib/constants";
-import { triggerAchievementCheck } from "@/lib/client-achievements";
 import { getHubHref } from "@/lib/hubs";
 
 interface EvaluationRecord {
@@ -82,7 +82,7 @@ export function EvaluatorPage() {
     }
     setEvaluation(data.evaluation);
     void loadHistory();
-    void triggerAchievementCheck("evaluation_completed");
+    queueCelebrationsFromGamification(data.events, "evaluator");
   }
 
   async function improveAnswer() {
@@ -117,6 +117,7 @@ export function EvaluatorPage() {
       toast.error(data.error ?? "Could not save as note");
       return;
     }
+    queueCelebrationsFromGamification(data.events, "evaluator-save-note");
     toast.success("Saved as a StudyOS note");
   }
 

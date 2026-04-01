@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser } from "@/lib/api";
 import { QuizModel } from "@/models/Quiz";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import type { QuizQuestion, QuizSubmissionAnswer } from "@/types";
 
 export async function POST(_request: Request, { params }: { params: { id: string } }) {

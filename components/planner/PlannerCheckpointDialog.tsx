@@ -6,6 +6,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import type { PlannerCheckpointSummary, PlannerDetails } from "@/types";
 
 interface Props {
@@ -96,6 +97,7 @@ export function PlannerCheckpointDialog({
     if (data.selectedPlan) {
       onPlanUpdated(data.selectedPlan);
     }
+    queueCelebrationsFromGamification(data.events, "planner-checkpoint");
 
     if (data.checkpoint?.passed) {
       toast.success(`Checkpoint passed with ${data.checkpoint.score}%`);

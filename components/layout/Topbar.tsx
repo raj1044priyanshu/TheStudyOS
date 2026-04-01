@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconArrowLeft, IconFlame, IconTrophy } from "@tabler/icons-react";
 import { Badge } from "@/components/ui/badge";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBell } from "@/components/layout/NotificationBell";
@@ -50,6 +51,11 @@ export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNext
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--tertiary-foreground)]">{eyebrow}</p>
                 <p className="truncate font-headline text-[clamp(1.55rem,3vw,1.9rem)] tracking-[-0.03em] text-[var(--foreground)]">{title}</p>
               </div>
+              <CompanionBadge
+                pose={pathname.includes("/focus") ? "sleepy-focus" : pathname.includes("/plan") ? "thinking" : pathname.includes("/track") ? "sparkle" : "wave"}
+                size={56}
+                className="hidden lg:inline-flex"
+              />
             </div>
 
             <div className="flex items-center gap-2 md:hidden">
@@ -112,7 +118,7 @@ export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNext
         style={{ background: "color-mix(in srgb, var(--surface-low) 72%, transparent)" }}
       >
         <div
-          className="h-full rounded-full bg-[linear-gradient(90deg,#7B6CF6,#6EE7B7)] opacity-80 transition-[width] duration-300"
+          className="h-full rounded-full opacity-80 transition-[width] duration-300 brand-gradient"
           style={{ width: `${progressToNextLevel}%` }}
         />
       </div>

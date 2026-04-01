@@ -31,6 +31,7 @@ function toProfilePayload(user: {
     class?: string | null;
     board?: string | null;
     stream?: string | null;
+    subjects?: string[] | null;
     studyHoursPerDay?: number | null;
   } | null;
 }) {
@@ -44,6 +45,7 @@ function toProfilePayload(user: {
       class: user.studyProfile?.class ?? "",
       board: user.studyProfile?.board ?? "",
       stream: user.studyProfile?.stream ?? "",
+      subjects: user.studyProfile?.subjects ?? [],
       studyHoursPerDay: user.studyProfile?.studyHoursPerDay ?? 0
     },
     createdAt: user.createdAt?.toISOString() ?? null

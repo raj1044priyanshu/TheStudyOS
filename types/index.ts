@@ -52,7 +52,7 @@ export type StudyHubTool = "notes" | "doubts" | "focus-room" | "videos" | "scann
 export type TestHubTool = "quiz" | "flashcards" | "teach-me" | "evaluator" | "past-papers";
 export type ReviseHubTool = "revision-queue" | "formula-sheet" | "mind-maps" | "knowledge-graph";
 export type HubToolId = PlanHubTool | StudyHubTool | TestHubTool | ReviseHubTool;
-export type PlannerPrefillSource = "manual" | "autopsy" | "exam" | "upcoming-exams" | "assistant";
+export type PlannerPrefillSource = "manual" | "autopsy" | "exam" | "upcoming-exams" | "prefill";
 export type PlannerCheckpointStatus = "not_started" | "studied" | "checkpoint_required" | "passed" | "revise_again";
 export type PlannerCheckpointQuestionType = "objective" | "fill_blank" | "short" | "long" | "numerical";
 export type ContextualHintId =
@@ -113,7 +113,7 @@ export type AchievementType =
   | "level_genius";
 
 export interface DoubtMessage {
-  role: "user" | "assistant";
+  role: "user" | "guide";
   content: string;
   timestamp: string;
   inputMode?: "text" | "voice";
@@ -209,6 +209,7 @@ export interface PlannerStudyContext {
   stream?: StudyStream | "";
   studyHoursPerDay: number;
   startDate: string;
+  examYear?: number;
 }
 
 export interface PlannerConfirmedExamInput {
@@ -263,6 +264,12 @@ export interface PlannerCheckpointSummary {
   status: "generated" | "submitted";
   feedback: string[];
   questionResults: PlannerCheckpointQuestionResult[];
+}
+
+export interface PlannerQuizContext {
+  planId: string;
+  date: string;
+  taskIndex: number;
 }
 
 export interface QuizQuestion {
@@ -579,7 +586,7 @@ export interface TeachMeEvaluation {
   correctPoints: string[];
   missedPoints: string[];
   misconceptions: TeachMeMisconception[];
-  aiSimplifiedExplanation: string;
+  referenceExplanation: string;
   encouragement: string;
   previousScore?: number | null;
   improvementDelta?: number | null;

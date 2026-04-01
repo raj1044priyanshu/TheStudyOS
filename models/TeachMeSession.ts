@@ -18,7 +18,7 @@ const TeachMeSessionSchema = new Schema(
       ],
       default: []
     },
-    aiSimplifiedExplanation: { type: String, required: true },
+    referenceExplanation: { type: String, required: true },
     encouragement: { type: String, default: "" }
   },
   { timestamps: { createdAt: true, updatedAt: false } }

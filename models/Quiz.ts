@@ -91,6 +91,14 @@ const QuizSchema = new Schema(
       },
       default: null
     },
+    plannerContext: {
+      type: {
+        planId: { type: String, default: null },
+        date: { type: String, default: null },
+        taskIndex: { type: Number, default: null }
+      },
+      default: null
+    },
     generationMeta: { type: GenerationMetaSchema, default: null }
   },
   { timestamps: { createdAt: true, updatedAt: false } }

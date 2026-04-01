@@ -82,6 +82,9 @@ export async function POST(request: Request) {
     }
 
     await connectToDatabase();
+    const beforeUser = await UserModel.findById(authResult.userId).select("totalXP xp").lean();
+    const beforeTotalXP = beforeUser?.totalXP ?? beforeUser?.xp ?? 0;
+    const beforeLevel = getLevelFromXp(beforeTotalXP);
 
     if (parsed.data.trigger === "daily_login") {
       await awardDailyLogin(authResult.userId);
@@ -99,7 +102,15 @@ export async function POST(request: Request) {
       totalXP: result.totalXP,
       level: result.level.level,
       levelName: result.level.name,
-      levelIcon: result.level.icon
+      levelIcon: result.level.icon,
+      previousLevel: beforeLevel.level,
+      xpGained: Math.max(0, (result.totalXP ?? beforeTotalXP) - beforeTotalXP),
+      levelUp: {
+        happened: result.level.level > beforeLevel.level,
+        from: beforeLevel.level,
+        to: result.level.level,
+        name: result.level.name
+      }
     });
   } catch (error) {
     return routeError("achievements:post", error);

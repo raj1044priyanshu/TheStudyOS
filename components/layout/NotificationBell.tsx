@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { IconBell } from "@tabler/icons-react";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { Button } from "@/components/ui/button";
 import { FloatingPanel, FloatingPanelScrollArea } from "@/components/ui/floating-panel";
 import { cn } from "@/lib/utils";
@@ -118,13 +119,19 @@ export function NotificationBell({ align = "right", className }: Props) {
             align === "right" ? "right-0" : "left-0"
           )}
         >
-          <div className="mb-2 flex items-center justify-between px-2 pb-2 pt-1">
-            <p className="font-headline text-[26px] tracking-[-0.02em] text-[var(--foreground)]">Notifications</p>
-            {unreadCount > 0 ? (
-              <button type="button" onClick={() => void markAllRead()} className="text-xs font-medium text-[#7B6CF6]">
-                Mark all read
-              </button>
-            ) : null}
+          <div className="mb-2 flex items-start justify-between gap-3 px-2 pb-2 pt-1">
+            <div className="min-w-0">
+              <p className="font-headline text-[26px] tracking-[-0.02em] text-[var(--foreground)]">Notifications</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">Milestones, reminders, and updates in one place.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 ? (
+                <button type="button" onClick={() => void markAllRead()} className="text-xs font-medium text-[color:var(--brand-500)]">
+                  Mark all read
+                </button>
+              ) : null}
+              <CompanionBadge pose="sparkle" size={52} className="shrink-0" />
+            </div>
           </div>
 
           {loading ? <p className="py-4 text-center text-sm text-[var(--muted-foreground)]">Loading...</p> : null}

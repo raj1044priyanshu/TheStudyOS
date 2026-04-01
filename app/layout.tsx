@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import {
-  DM_Serif_Display,
-  Plus_Jakarta_Sans,
+  Fraunces,
+  Manrope,
   Caveat,
   JetBrains_Mono
 } from "next/font/google";
@@ -12,8 +12,8 @@ import { SiteAlertBanner } from "@/components/shared/SiteAlertBanner";
 import "driver.js/dist/driver.css";
 import "./globals.css";
 
-const dmSerif = DM_Serif_Display({ subsets: ["latin"], weight: ["400"], variable: "--font-heading" });
-const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-body" });
+const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-heading" });
+const manrope = Manrope({ subsets: ["latin"], variable: "--font-body" });
 const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat" });
 const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" });
 
@@ -31,7 +31,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${dmSerif.variable} ${jakarta.variable} ${caveat.variable} ${jetbrainsMono.variable}`}
+        className={`${fraunces.variable} ${manrope.variable} ${caveat.variable} ${jetbrainsMono.variable}`}
       >
         <AuthSessionProvider session={session}>
           <AppProviders>

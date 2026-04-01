@@ -1,5 +1,6 @@
 "use client";
 
+import { CelebrationCenter } from "@/components/celebrations/CelebrationCenter";
 import { GlobalLoadingBar } from "@/components/layout/GlobalLoadingBar";
 import { ErrorReporterProvider } from "@/components/providers/ErrorReporterProvider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
@@ -14,13 +15,14 @@ export function AppProviders({ children }: Props) {
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <GlobalLoadingBar />
       <ErrorReporterProvider>{children}</ErrorReporterProvider>
+      <CelebrationCenter />
       <Toaster
         position="top-right"
         toastOptions={{
           style: {
-            borderRadius: "18px",
+            borderRadius: "24px",
             border: "1px solid var(--panel-border)",
-            backdropFilter: "blur(24px) saturate(180%)",
+            backdropFilter: "blur(26px) saturate(160%)",
             background: "var(--glass-surface-strong)",
             color: "var(--foreground)",
             boxShadow: "var(--glass-shadow-deep)"

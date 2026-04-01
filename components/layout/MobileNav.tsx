@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { IconChevronRight, IconMenu2, IconX } from "@tabler/icons-react";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { MOBILE_MORE_NAV_ITEMS, MOBILE_PRIMARY_NAV_ITEMS, getHubNavKey } from "@/lib/hubs";
 import { cn } from "@/lib/utils";
 
@@ -89,14 +90,17 @@ export function MobileNav() {
                       Open your profile, revision tools, progress views, and group study from here.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setMoreOpen(false)}
-                    className="surface-icon-muted inline-flex h-11 w-11 items-center justify-center rounded-[18px] transition hover:text-[var(--foreground)]"
-                    aria-label="Close more navigation"
-                  >
-                    <IconX className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <CompanionBadge pose="wave" size={50} />
+                    <button
+                      type="button"
+                      onClick={() => setMoreOpen(false)}
+                      className="surface-icon-muted inline-flex h-11 w-11 items-center justify-center rounded-[18px] transition hover:text-[var(--foreground)]"
+                      aria-label="Close more navigation"
+                    >
+                      <IconX className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid gap-3">

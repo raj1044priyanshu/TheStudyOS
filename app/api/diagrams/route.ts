@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { applyRouteRateLimit, parseJsonString, requireUser } from "@/lib/api";
-import { generateContent } from "@/lib/gemini";
+import { generateText as generateContent } from "@/lib/content-service";
 
 const schema = z.object({
   description: z.string().min(6).max(400),

@@ -1,7 +1,6 @@
 "use client";
 
-import toast from "react-hot-toast";
-import { AchievementToast } from "@/components/shared/AchievementToast";
+import { queueCelebrationsFromAchievementResponse, type AchievementTriggerResponse } from "@/lib/client-celebrations";
 
 interface AchievementItem {
   id?: string;
@@ -17,27 +16,27 @@ interface AchievementResponse {
   newAchievements?: AchievementItem[];
   totalXP?: number;
   level?: number;
+  levelName?: string;
+  xpGained?: number;
+  previousLevel?: number;
+  levelUp?: {
+    happened: boolean;
+    from: number;
+    to: number;
+    name?: string;
+  };
 }
 
 export function showAchievementToasts(achievements: AchievementItem[]) {
-  achievements.forEach((achievement, index) => {
-    window.setTimeout(() => {
-      toast.custom(
-        () => (
-          <AchievementToast
-            icon={achievement.icon ?? ""}
-            name={achievement.name ?? achievement.title ?? "Achievement"}
-            xp={achievement.xp ?? 0}
-            color={achievement.color ?? "#7B6CF6"}
-          />
-        ),
-        {
-          id: `achievement-${achievement.id ?? achievement.type ?? achievement.name ?? index}-${Date.now()}`,
-          position: "bottom-right",
-          duration: 4000
-        }
-      );
-    }, index * 100);
+  queueCelebrationsFromAchievementResponse({
+    newAchievements: achievements.map((achievement) => ({
+      type: achievement.type,
+      title: achievement.name ?? achievement.title,
+      description: achievement.title ?? achievement.name,
+      icon: achievement.icon,
+      color: achievement.color,
+      xp: achievement.xp
+    }))
   });
 }
 
@@ -49,8 +48,8 @@ export async function triggerAchievementCheck(trigger: string) {
       body: JSON.stringify({ trigger })
     });
     const data = (await response.json().catch(() => ({}))) as AchievementResponse;
-    if (response.ok && data.newAchievements?.length) {
-      showAchievementToasts(data.newAchievements);
+    if (response.ok) {
+      queueCelebrationsFromAchievementResponse(data as AchievementTriggerResponse, trigger);
     }
     return data;
   } catch {

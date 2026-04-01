@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { NextStepCard } from "@/components/shared/NextStepCard";
-import { triggerAchievementCheck } from "@/lib/client-achievements";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { getHubHref } from "@/lib/hubs";
 
 const STORAGE_KEY = "studyos-focus-session";
@@ -54,6 +54,7 @@ const QUOTES = [
 interface CompletionPayload {
   streak: number;
   message: string;
+  events?: import("@/types").GamificationEvent;
   nextTopicSuggestion?: {
     nextTopic: string;
     reason: string;
@@ -261,10 +262,7 @@ export function FocusRoom() {
         throw new Error("Could not save session");
       }
       setCompletion(data);
-      void triggerAchievementCheck("focus_completed");
-      if (duration >= 60) {
-        void triggerAchievementCheck("focus_60");
-      }
+      queueCelebrationsFromGamification(data.events, "focus");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save session");
     } finally {

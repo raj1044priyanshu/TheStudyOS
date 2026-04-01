@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { uploadStudyImage } from "@/lib/cloudinary";
-import { generateGeminiMultimodalJson } from "@/lib/ai";
+import { generateMultimodalStructuredData } from "@/lib/content-service";
 import { ScanResultModel } from "@/models/ScanResult";
 import { logActivity } from "@/lib/progress";
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const base64Data = await fileToBase64(file);
     const uploaded = await uploadStudyImage(`data:${file.type};base64,${base64Data}`);
 
-    const analysis = await generateGeminiMultimodalJson<{
+    const analysis = await generateMultimodalStructuredData<{
       transcription: string;
       subject: string;
       topic: string;
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       concepts: Array<{ name: string; explanation: string }>;
       errors: Array<{ originalText: string; correction: string; type: "factual" | "calculation" | "misconception" }>;
     }>({
-      systemPrompt: "You are an expert academic OCR and teaching assistant. Analyze educational images with precision.",
+      systemPrompt: "You are an expert academic OCR and study reviewer. Analyze educational images with precision.",
       parts: [
         { type: "image", data: base64Data, mimeType: file.type || "image/jpeg" },
         {

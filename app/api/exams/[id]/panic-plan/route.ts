@@ -5,7 +5,7 @@ import { requireUser, routeError } from "@/lib/api";
 import { ExamModel } from "@/models/Exam";
 import { QuizModel } from "@/models/Quiz";
 import { ProgressModel } from "@/models/Progress";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 
 async function computeReadiness(userId: string, subject: string) {
   const [quizAgg, progressAgg] = await Promise.all([

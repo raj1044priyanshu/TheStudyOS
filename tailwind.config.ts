@@ -11,21 +11,21 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#7B6CF6",
-        secondary: "#C4B5FD",
-        accent: "#6EE7B7",
-        darkBg: "#161222",
-        cardBg: "#221C31",
-        surface: "#2A233A",
-        textPrimary: "#1C1B29",
-        textSecondary: "#6B6880",
-        notePaper: "#FEFCE8",
-        noteLines: "#E3E0D4",
-        lavenderBase: "#F0EEF8"
+        primary: "#E58B79",
+        secondary: "#F2DFD0",
+        accent: "#86B29D",
+        darkBg: "#16111A",
+        cardBg: "#241B24",
+        surface: "#342630",
+        textPrimary: "#2C2431",
+        textSecondary: "#756675",
+        notePaper: "#FFFAF3",
+        noteLines: "#E6D7CB",
+        lavenderBase: "#FCF7F0"
       },
       boxShadow: {
-        glass: "0 4px 24px rgba(123,108,246,0.08), 0 1px 2px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9)",
-        float: "0 16px 40px rgba(123,108,246,0.14)"
+        glass: "0 18px 46px rgba(205,168,147,0.14), 0 3px 12px rgba(48,27,38,0.05), inset 0 1px 0 rgba(255,255,255,0.96)",
+        float: "0 20px 44px rgba(229,139,121,0.18)"
       },
       backdropBlur: {
         xs: "2px"

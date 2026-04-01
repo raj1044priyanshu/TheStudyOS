@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import dagre from "@dagrejs/dagre";
-import { generateContent } from "@/lib/gemini";
+import { generateText as generateContent } from "@/lib/content-service";
 import { requireUser, applyRouteRateLimit, parseJsonString } from "@/lib/api";
 import type { MindMapNodeInput } from "@/types";
 

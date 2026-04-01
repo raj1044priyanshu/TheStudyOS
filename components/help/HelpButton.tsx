@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronRight, IconHelpCircle, IconRefresh, IconRoute, IconSchool } from "@tabler/icons-react";
 import { FEATURE_GUIDES, HELP_GOAL_ACTIONS } from "@/lib/study-flow";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { Button } from "@/components/ui/button";
 import { clearAllTourStorage, getTourPageFromPathname, queueForcedTour } from "@/lib/tour";
 import { StudyWorkflowModal } from "@/components/help/StudyWorkflowModal";
@@ -88,8 +89,13 @@ export function HelpButton({ studyStyle = "mixed", className }: Props) {
             >
               <div className="flex h-full flex-col">
                 <div className="border-b border-[color:var(--panel-border)] px-5 py-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Help Centre</p>
-                  <h3 className="mt-2 font-headline text-4xl text-[var(--foreground)]">Need a guide?</h3>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Help Centre</p>
+                      <h3 className="mt-2 font-headline text-4xl text-[var(--foreground)]">Need a guide?</h3>
+                    </div>
+                    <CompanionBadge pose="thinking" size={56} className="shrink-0" />
+                  </div>
                 </div>
 
                 <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-5 py-5">
@@ -166,7 +172,7 @@ export function HelpButton({ studyStyle = "mixed", className }: Props) {
                               <p className="text-sm leading-6 text-[var(--muted-foreground)]">
                                 <span className="font-medium text-[var(--foreground)]">When to use this:</span> {guide.whenToUse}
                               </p>
-                              <a href={guide.href} className="inline-flex text-sm font-medium text-[#7B6CF6]">
+                              <a href={guide.href} className="inline-flex text-sm font-medium text-[color:var(--brand-500)]">
                                 Open feature
                               </a>
                             </div>

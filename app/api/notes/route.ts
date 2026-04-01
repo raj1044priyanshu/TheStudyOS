@@ -3,7 +3,7 @@ import { Types } from "mongoose";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit } from "@/lib/api";
-import { generateContentWithMetadata } from "@/lib/gemini";
+import { generateTextWithMetadata as generateContentWithMetadata } from "@/lib/content-service";
 import { analyzeNoteContent, extractNoteDiagramPlaceholders } from "@/lib/note-content";
 import { NoteModel } from "@/models/Note";
 import { logActivity } from "@/lib/progress";
@@ -83,6 +83,7 @@ Rules:
 - Use at least 2 heading blocks total across [HEADING1], [HEADING2], and [HEADING3].
 - Use at least 6 tagged study body blocks from [STAR_POINT], [ARROW_POINT], [CHECK_POINT], [BULLET_POINT], [FORMULA_BOX], [DEFINITION_BOX], [EXAMPLE_BOX], [MEMORY_BOX], and sticky notes.
 - Include at least 2 [DIAGRAM_PLACEHOLDER] lines for clean educational visuals or diagrams.
+- Only use inline [HIGHLIGHT_*] tags in balanced open/close pairs. Never leave an unmatched highlight tag behind.
 - Keep every statement classroom-safe and fact-focused.
 - Do not guess, hedge, or include low-confidence wording.
 - If no formula applies, use definitions, examples, or memory tricks instead.
@@ -196,10 +197,7 @@ async function generateAndPersistNoteVisuals(note: {
     }
   }
 
-  note.visuals = visuals.map((visual) => ({
-    ...visual,
-    generatedAt: new Date(visual.generatedAt)
-  }));
+  note.visuals = visuals;
 
   if (visuals.length > 0) {
     await note.save();

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
 import { LoginButton } from "@/components/auth/LoginButton";
+import { CompanionBadge, CompanionPanel } from "@/components/companion/StudyCompanion";
 import { connectToDatabase } from "@/lib/mongodb";
 import { UserModel } from "@/models/User";
 
@@ -40,6 +41,14 @@ export default async function LoginPage() {
               </p>
             </div>
 
+            <CompanionPanel
+              pose="wave"
+              eyebrow="Welcome back"
+              title="Your workspace is ready"
+              description="The same visual system now carries through celebrations, helper panels, and the rest of StudyOS."
+              compact
+            />
+
             <div className="grid max-w-xl gap-3 sm:grid-cols-3">
               {[
                 ["Notes", "Handwritten-style note generation with export-ready reading views."],
@@ -56,8 +65,13 @@ export default async function LoginPage() {
 
           <div className="glass-modal w-full p-8 md:p-10">
             <Logo compact className="mb-5" />
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Welcome</p>
-            <h2 className="mt-3 font-headline text-5xl tracking-[-0.03em] text-[var(--foreground)]">Sign in</h2>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Welcome</p>
+                <h2 className="mt-3 font-headline text-5xl tracking-[-0.03em] text-[var(--foreground)]">Sign in</h2>
+              </div>
+              <CompanionBadge pose="wave" size={64} />
+            </div>
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
               Continue with Google to open your study workspace, planner state, notes, and progress tracking.
             </p>

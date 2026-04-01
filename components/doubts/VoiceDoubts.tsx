@@ -88,28 +88,28 @@ export function VoiceDoubts() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let aiContent = "";
+        let guideContent = "";
 
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: "", timestamp: new Date().toISOString() }
+          { role: "guide", content: "", timestamp: new Date().toISOString() }
         ]);
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          aiContent += decoder.decode(value, { stream: true });
+          guideContent += decoder.decode(value, { stream: true });
           setMessages((prev) => {
             const copy = [...prev];
             copy[copy.length - 1] = {
               ...copy[copy.length - 1],
-              content: aiContent
+              content: guideContent
             };
             return copy;
           });
         }
 
-        await speak(aiContent);
+        await speak(guideContent);
         if (muted) {
           setVoiceState("idle");
         }
@@ -172,8 +172,8 @@ export function VoiceDoubts() {
     recognitionRef.current = recognition;
   }, [submitTranscript]);
 
-  const lastAssistantMessage = useMemo(
-    () => [...messages].reverse().find((message) => message.role === "assistant")?.content ?? "",
+  const lastGuideMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.role === "guide")?.content ?? "",
     [messages]
   );
 
@@ -233,7 +233,7 @@ export function VoiceDoubts() {
                         ? "bg-[#7B6CF6] text-white shadow-[0_14px_30px_rgba(123,108,246,0.22)]"
                         : "border border-[color:var(--panel-border)] bg-[color:var(--surface-low)] text-[var(--foreground)]"
                     }`}
-                    style={message.role === "assistant" ? { borderColor: `${color}30` } : undefined}
+                    style={message.role === "guide" ? { borderColor: `${color}30` } : undefined}
                   >
                     {message.role === "user" && message.inputMode === "voice" ? <IconMicrophone className="mr-2 inline h-4 w-4" /> : null}
                     {message.content}
@@ -242,7 +242,7 @@ export function VoiceDoubts() {
               );
             })}
 
-            {voiceState === "speaking" && lastAssistantMessage ? (
+            {voiceState === "speaking" && lastGuideMessage ? (
               <div className="flex justify-start">
                 <div className="flex items-center gap-1 rounded-full border border-[color:var(--panel-border)] bg-[color:var(--surface-low)] px-4 py-2 text-xs text-[var(--muted-foreground)]">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-[#7B6CF6]" />

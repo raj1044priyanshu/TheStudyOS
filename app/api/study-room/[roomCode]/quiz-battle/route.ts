@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, routeError } from "@/lib/api";
 import { StudyRoomModel } from "@/models/StudyRoom";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import { pusherServer } from "@/lib/pusher";
 import { redis } from "@/lib/ratelimit";
 import { roomLeaderboardKey, roomQuestionsKey } from "@/lib/study-room";

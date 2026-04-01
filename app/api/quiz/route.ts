@@ -2,20 +2,28 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit, parseJsonString } from "@/lib/api";
-import { generateContentWithMetadata } from "@/lib/gemini";
+import { generateTextWithMetadata as generateContentWithMetadata } from "@/lib/content-service";
 import { quizAnswerSchema, validateGeneratedQuiz, type QuizAnswer } from "@/lib/quiz-content";
 import { QuizModel } from "@/models/Quiz";
+import { StudyPlanModel } from "@/models/StudyPlan";
 import { logActivity } from "@/lib/progress";
 import { scheduleRevisionItem } from "@/lib/revision";
 import { upsertConceptNode, updateConceptConfidence } from "@/lib/knowledge-graph";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
 
+const plannerContextSchema = z.object({
+  planId: z.string(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  taskIndex: z.number().int().min(0)
+});
+
 const postSchema = z.object({
   topic: z.string().min(2),
   subject: z.string().min(2),
   difficulty: z.enum(["easy", "medium", "hard"]),
-  numQuestions: z.number().min(1).max(20)
+  numQuestions: z.number().min(1).max(20),
+  plannerContext: plannerContextSchema.optional()
 });
 
 const patchSchema = z.object({
@@ -143,7 +151,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { topic, subject, difficulty, numQuestions } = parsed.data;
+  const { topic, subject, difficulty, numQuestions, plannerContext } = parsed.data;
   try {
     const generated = await generateReviewedQuiz({ topic, subject, difficulty, numQuestions });
 
@@ -154,6 +162,7 @@ export async function POST(request: Request) {
       subject,
       questions: generated.questions,
       totalQuestions: generated.questions.length,
+      plannerContext: plannerContext ?? null,
       generationMeta: generated.generationMeta
     });
 
@@ -237,6 +246,27 @@ export async function PATCH(request: Request) {
   quiz.completedAt = new Date();
   quiz.submittedAnswers = submittedAnswers;
   await quiz.save();
+
+  let plannerCheckpoint: { passed: boolean; planId: string; date: string; taskIndex: number } | null = null;
+  if (quiz.plannerContext?.planId && quiz.plannerContext?.date && typeof quiz.plannerContext?.taskIndex === "number") {
+    const plan = await StudyPlanModel.findOne({ _id: quiz.plannerContext.planId, userId: authResult.userId });
+    const day = plan?.generatedPlan.find((item: { date: string }) => item.date === quiz.plannerContext.date);
+    const task = day?.tasks?.[quiz.plannerContext.taskIndex];
+
+    if (plan && day && task) {
+      task.checkpointId = quiz._id.toString();
+      task.checkpointScore = percent;
+      task.checkpointStatus = percent >= 50 ? "passed" : "revise_again";
+      task.completed = percent >= 50;
+      await plan.save();
+      plannerCheckpoint = {
+        passed: percent >= 50,
+        planId: quiz.plannerContext.planId,
+        date: quiz.plannerContext.date,
+        taskIndex: quiz.plannerContext.taskIndex
+      };
+    }
+  }
 
   const events = await logActivity({
     userId: authResult.userId,
@@ -328,6 +358,7 @@ export async function PATCH(request: Request) {
       totalQuestions: quiz.questions.length,
       percent
     },
-    autopsyAvailable: percent < 100
+    autopsyAvailable: percent < 100,
+    plannerCheckpoint
   });
 }

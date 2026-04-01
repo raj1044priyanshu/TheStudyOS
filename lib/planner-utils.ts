@@ -32,3 +32,29 @@ export function toDateInput(value: string | Date | null | undefined) {
 
   return date.toISOString().slice(0, 10);
 }
+
+export function buildPlannerQuizHref({
+  subject,
+  topic,
+  planId,
+  date,
+  taskIndex
+}: {
+  subject: string;
+  topic: string;
+  planId: string;
+  date: string;
+  taskIndex: number;
+}) {
+  const params = new URLSearchParams({
+    tool: "quiz",
+    source: "planner",
+    subject,
+    topic,
+    planId,
+    date,
+    taskIndex: String(taskIndex)
+  });
+
+  return `/dashboard/test?${params.toString()}`;
+}

@@ -3,15 +3,14 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit } from "@/lib/api";
 import { DoubtsSessionModel } from "@/models/DoubtsSession";
-import { generateGroqContent } from "@/lib/groq";
-import { generateContent } from "@/lib/gemini";
+import { generateTextWithFallback } from "@/lib/content-service";
 
 const bodySchema = z.object({
   message: z.string().min(1),
   history: z
     .array(
       z.object({
-        role: z.enum(["user", "assistant"]),
+        role: z.enum(["user", "guide", "assistant"]),
         content: z.string().min(1),
         timestamp: z.string().optional()
       })
@@ -33,6 +32,10 @@ export async function POST(request: Request) {
   }
 
   const { message, history, subject } = parse.data;
+  const normalizedHistory = history.map((item) => ({
+    ...item,
+    role: item.role === "assistant" ? "guide" : item.role
+  }));
   const systemPrompt = `You are StudyOS Tutor for ${subject}. Sound like a warm teacher, not a textbook.
 
 Always reply in plain text using exactly these section labels:
@@ -55,31 +58,26 @@ Rules:
 - Keep math readable in plain text and use numbered steps when solving.
 - If the question is not mathematical, still keep the same three-section structure with one practical example.`;
 
-  const historyText = history
+  const historyText = normalizedHistory
     .slice(-10)
     .map((item) => `${item.role.toUpperCase()}: ${item.content}`)
     .join("\n");
 
-  let aiText = "";
-  try {
-    aiText = await generateGroqContent(`${historyText}\nUSER: ${message}\nAI:`, systemPrompt);
-  } catch {
-    aiText = await generateContent(`${historyText}\nUSER: ${message}\nAI:`, systemPrompt);
-  }
+  const responseText = await generateTextWithFallback(`${historyText}\nUSER: ${message}\nGUIDE:`, systemPrompt);
 
   await connectToDatabase();
   await DoubtsSessionModel.create({
     userId: authResult.userId,
     subject,
     messages: [
-      ...history.slice(-10).map((item) => ({ ...item, timestamp: new Date(item.timestamp || Date.now()) })),
+      ...normalizedHistory.slice(-10).map((item) => ({ ...item, timestamp: new Date(item.timestamp || Date.now()) })),
       { role: "user", content: message, timestamp: new Date() },
-      { role: "assistant", content: aiText, timestamp: new Date() }
+      { role: "guide", content: responseText, timestamp: new Date() }
     ]
   });
 
   const encoder = new TextEncoder();
-  const chunks = aiText.match(/[\s\S]{1,24}/g) ?? [aiText];
+  const chunks = responseText.match(/[\s\S]{1,24}/g) ?? [responseText];
 
   const stream = new ReadableStream({
     start(controller) {

@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { requireUser, routeError } from "@/lib/api";
 import { redis } from "@/lib/ratelimit";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 
 type FocusSuggestion = {
   nextTopic: string;

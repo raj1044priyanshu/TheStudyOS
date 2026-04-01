@@ -5,8 +5,8 @@ import toast from "react-hot-toast";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
-import { triggerAchievementCheck } from "@/lib/client-achievements";
 
 interface RevisionItem {
   _id: string;
@@ -71,7 +71,7 @@ export function RevisionQueue() {
       return;
     }
     setReviewMessage(data.message ?? "");
-    void triggerAchievementCheck("revision_reviewed");
+    queueCelebrationsFromGamification(data.events, "revision");
     await load();
   }
 

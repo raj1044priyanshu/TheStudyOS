@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { IconSearch } from "@tabler/icons-react";
+import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { Input } from "@/components/ui/input";
 import { FloatingPanel, FloatingPanelScrollArea } from "@/components/ui/floating-panel";
 
@@ -112,6 +113,13 @@ export function GlobalSearch({ className, inputClassName }: Props) {
       />
       {open && (searching || results.length > 0 || query.trim().length >= 2) ? (
         <FloatingPanel id={resultsId} className="absolute left-0 right-0 top-[3.25rem] z-50">
+          <div className="flex items-start justify-between gap-3 px-2 pb-2 pt-1">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Global search</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Your notes, quizzes, plans, and shortcuts.</p>
+            </div>
+            <CompanionBadge pose="thinking" size={54} className="shrink-0" />
+          </div>
           {searching ? <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">Searching...</p> : null}
           {!searching && results.length === 0 ? <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">No matches found.</p> : null}
           {!searching && results.length > 0 ? (

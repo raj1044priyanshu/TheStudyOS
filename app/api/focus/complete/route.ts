@@ -4,7 +4,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { FocusSessionModel } from "@/models/FocusSession";
 import { logActivity } from "@/lib/progress";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 
 const schema = z.object({
   subject: z.string().min(2),

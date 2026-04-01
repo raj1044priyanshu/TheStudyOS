@@ -3,7 +3,8 @@ import { z } from "zod";
 import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { PastPaperModel } from "@/models/PastPaper";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
+import { extractPdfText } from "@/lib/server/pdf-text";
 import { markFeatureUsed } from "@/lib/progress";
 
 const metadataSchema = z.object({
@@ -41,11 +42,7 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { PDFParse } = await import("pdf-parse");
-    const parser = new PDFParse({ data: buffer });
-    const extracted = await parser.getText();
-    await parser.destroy();
-    const sourceText = extracted.text?.trim();
+    const sourceText = await extractPdfText(buffer);
     if (!sourceText) {
       return NextResponse.json({ error: "Could not read this PDF. Please try another file." }, { status: 400 });
     }

@@ -14,6 +14,7 @@ import {
   IconTopologyStar3
 } from "@tabler/icons-react";
 import { LandingFeedbackForm } from "@/components/feedback/LandingFeedbackForm";
+import { CompanionBadge, CompanionPanel, StudyCompanion } from "@/components/companion/StudyCompanion";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
@@ -87,6 +88,14 @@ export default async function LandingPage() {
                 </div>
               ))}
             </div>
+
+            <CompanionPanel
+              pose="wave"
+              eyebrow="Workspace"
+              title="Focused visuals, calm workflow"
+              description="StudyOS keeps its visual language consistent across hero panels, milestones, and helper surfaces without taking attention away from the work."
+              compact
+            />
           </div>
 
           <div className="glass-card animate-fade-up-soft p-5 md:p-6">
@@ -95,12 +104,25 @@ export default async function LandingPage() {
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.heroPanelEyebrow}</p>
                 <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.heroPanelTitle}</h2>
               </div>
-              <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#7B6CF6]/12 text-[#7B6CF6]">
-                <IconArrowUpRight className="h-5 w-5" />
-              </span>
+              <div className="flex items-center gap-3">
+                <CompanionBadge pose="sparkle" size={58} />
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#7B6CF6]/12 text-[#7B6CF6]">
+                  <IconArrowUpRight className="h-5 w-5" />
+                </span>
+              </div>
             </div>
 
             <div className="mt-6 grid gap-4">
+              <div className="rounded-[24px] border border-[color:var(--panel-border)] bg-[color:var(--hero-panel)] p-4">
+                <div className="flex items-center gap-4">
+                  <StudyCompanion pose="sparkle" size={120} compact />
+                  <div>
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--brand-700)]">Shared companion</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Consistent visual accents now carry through empty states, celebrations, and helper surfaces.</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="surface-card-strong rounded-[24px] p-4">
                 <div className="flex items-center justify-between">
                   <div>

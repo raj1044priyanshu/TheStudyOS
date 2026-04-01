@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { SUBJECTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import type { PlannerQuizContext } from "@/types";
 
 interface QuizSummary {
   _id: string;
@@ -30,6 +31,24 @@ export function QuizPanel() {
   const [numQuestions, setNumQuestions] = useState<(typeof QUESTION_COUNTS)[number]>(10);
   const [loading, setLoading] = useState(false);
   const [quizzes, setQuizzes] = useState<QuizSummary[]>([]);
+  const plannerContext = useMemo<PlannerQuizContext | null>(() => {
+    if (searchParams.get("source") !== "planner") {
+      return null;
+    }
+
+    const planId = searchParams.get("planId")?.trim() ?? "";
+    const date = searchParams.get("date")?.trim() ?? "";
+    const taskIndexValue = Number(searchParams.get("taskIndex"));
+    if (!planId || !date || !Number.isInteger(taskIndexValue) || taskIndexValue < 0) {
+      return null;
+    }
+
+    return {
+      planId,
+      date,
+      taskIndex: taskIndexValue
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     const nextTopic = searchParams.get("topic");
@@ -61,7 +80,10 @@ export function QuizPanel() {
     const response = await fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        ...payload,
+        ...(!next && plannerContext ? { plannerContext } : {})
+      })
     });
     const data = await response.json().catch(() => ({}));
     setLoading(false);
@@ -83,6 +105,11 @@ export function QuizPanel() {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {plannerContext ? (
+            <div className="md:col-span-2 rounded-[22px] border border-[#F6C27A]/40 bg-[#FFF6E7] px-4 py-3 text-sm text-[#9A5B12]">
+              This quiz is linked to your planner. Score 50% or more to clear the chapter automatically.
+            </div>
+          ) : null}
           <div className="space-y-2 md:col-span-2">
             <label className="text-sm font-medium text-[var(--foreground)]">Topic</label>
             <Input

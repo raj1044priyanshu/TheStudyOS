@@ -12,7 +12,8 @@ const StudyPlanSchema = new Schema(
       board: { type: String, default: "" },
       stream: { type: String, default: "" },
       studyHoursPerDay: { type: Number, default: 1 },
-      startDate: { type: String, default: "" }
+      startDate: { type: String, default: "" },
+      examYear: { type: Number, default: null }
     },
     subjects: {
       type: [

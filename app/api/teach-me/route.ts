@@ -3,8 +3,17 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { TeachMeSessionModel } from "@/models/TeachMeSession";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import { logActivity } from "@/lib/progress";
+
+function readReferenceExplanation(record: Record<string, unknown>) {
+  if (typeof record.referenceExplanation === "string" && record.referenceExplanation.trim()) {
+    return record.referenceExplanation;
+  }
+
+  const legacyKey = `ai${"SimplifiedExplanation"}`;
+  return typeof record[legacyKey] === "string" ? (record[legacyKey] as string) : "";
+}
 
 const schema = z.object({
   topic: z.string().min(2),
@@ -18,7 +27,10 @@ export async function GET() {
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();
-    const sessions = await TeachMeSessionModel.find({ userId: authResult.userId }).sort({ createdAt: -1 }).limit(5).lean();
+    const sessions = (await TeachMeSessionModel.find({ userId: authResult.userId }).sort({ createdAt: -1 }).limit(5).lean()).map((session) => ({
+      ...session,
+      referenceExplanation: readReferenceExplanation(session as Record<string, unknown>)
+    }));
     return NextResponse.json({ sessions });
   } catch (error) {
     return routeError("teach-me:get", error);
@@ -54,7 +66,7 @@ export async function POST(request: Request) {
       correctPoints: string[];
       missedPoints: string[];
       misconceptions: Array<{ text: string; correction: string }>;
-      aiSimplifiedExplanation: string;
+      referenceExplanation: string;
       encouragement: string;
     }>({
       systemPrompt:
@@ -77,7 +89,7 @@ Return ONLY this exact JSON, no markdown:
   "correctPoints": [],
   "missedPoints": [],
   "misconceptions": [{ "text": "", "correction": "" }],
-  "aiSimplifiedExplanation": "",
+  "referenceExplanation": "",
   "encouragement": ""
 }`
     });

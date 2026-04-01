@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { EvaluationModel } from "@/models/Evaluation";
-import { generateJsonWithFallback } from "@/lib/ai";
+import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import { logActivity } from "@/lib/progress";
 
 const schema = z.object({
