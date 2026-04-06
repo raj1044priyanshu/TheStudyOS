@@ -1,7 +1,7 @@
-import { getPublicAppSettings } from "@/lib/app-settings";
+import { getCachedPublicAppSettings } from "@/lib/app-settings";
 
 export async function SiteAlertBanner() {
-  const settings = await getPublicAppSettings();
+  const settings = await getCachedPublicAppSettings();
 
   if (!settings.maintenanceBanner.enabled) {
     return null;

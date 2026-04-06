@@ -30,6 +30,7 @@ export function Sidebar({ user, isAdmin = false }: Props) {
           className="mb-8 px-2"
           textClassName="text-[38px]"
           subtitleClassName="max-w-[10.5rem] text-[10px] leading-[1.45] tracking-[0.22em]"
+          href="/dashboard#top"
         />
         <div className="min-h-0 flex-1 overflow-y-auto pr-1 pt-4 scrollbar-thin">
           <nav className="space-y-2">

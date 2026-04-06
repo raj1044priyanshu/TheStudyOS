@@ -10,8 +10,9 @@ import { evaluateAchievements, logActivity } from "@/lib/progress";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { UserModel } from "@/models/User";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
+import { createOrGetPlannerCheckpoint } from "@/lib/planner-assessment";
 import { buildChapterPlan } from "@/lib/planner-prefill";
-import { buildPlannerQuizHref, normalizeTopicList } from "@/lib/planner-utils";
+import { buildPlannerAssessmentHref, normalizeTopicList } from "@/lib/planner-utils";
 
 const subjectSchema = z.object({
   name: z.string().min(2),
@@ -462,22 +463,29 @@ export async function PATCH(request: Request) {
     }
   } else {
     if (completed && task.type !== "break" && task.checkpointStatus !== "passed") {
-      if (task.checkpointStatus !== "revise_again") {
-        task.checkpointStatus = "checkpoint_required";
-        await plan.save();
-      }
-
-      const redirectTo = buildPlannerQuizHref({
-        subject: task.subject,
-        topic: task.chapter ?? task.topic,
+      const checkpoint = await createOrGetPlannerCheckpoint({
+        userId: authResult.userId,
         planId: plan._id.toString(),
         date,
-        taskIndex
+        taskIndex,
+        subject: task.subject,
+        chapter: task.chapter ?? task.topic,
+        examName: task.examName ?? "",
+        board: (plan.studyContext as { board?: string } | null)?.board ?? "",
+        className: (plan.studyContext as { className?: string } | null)?.className ?? "",
+        stream: (plan.studyContext as { stream?: string } | null)?.stream ?? ""
       });
+
+      task.checkpointStatus = checkpoint.passed ? "passed" : "checkpoint_required";
+      task.checkpointId = checkpoint._id.toString();
+      task.checkpointScore = checkpoint.score;
+      await plan.save();
+
+      const redirectTo = buildPlannerAssessmentHref(checkpoint._id.toString());
 
       return NextResponse.json(
         {
-          error: "Pass the chapter checkpoint before marking this complete",
+          error: "Pass the chapter assessment before marking this complete",
           reason: "checkpoint_required",
           redirectTo,
           selectedPlan: plannerDetails(plan.toObject() as unknown as PlannerDoc),

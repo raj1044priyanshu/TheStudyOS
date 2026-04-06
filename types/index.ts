@@ -54,7 +54,7 @@ export type ReviseHubTool = "revision-queue" | "formula-sheet" | "mind-maps" | "
 export type HubToolId = PlanHubTool | StudyHubTool | TestHubTool | ReviseHubTool;
 export type PlannerPrefillSource = "manual" | "autopsy" | "exam" | "upcoming-exams" | "prefill";
 export type PlannerCheckpointStatus = "not_started" | "studied" | "checkpoint_required" | "passed" | "revise_again";
-export type PlannerCheckpointQuestionType = "objective" | "fill_blank" | "short" | "long" | "numerical";
+export type PlannerCheckpointQuestionType = "objective" | "fill_blank" | "short" | "long" | "numerical" | "case";
 export type ContextualHintId =
   | "notes_no_quiz"
   | "quiz_no_autopsy"
@@ -237,6 +237,8 @@ export interface PlannerGenerationInput {
 
 export interface PlannerCheckpointQuestion {
   prompt: string;
+  concept: string;
+  difficulty: DifficultyLevel;
   type: PlannerCheckpointQuestionType;
   options?: string[];
   answerKey?: string;
@@ -249,6 +251,21 @@ export interface PlannerCheckpointQuestionResult {
   obtainedMarks: number;
   maxMarks: number;
   feedback: string;
+  recommendedAction?: string;
+  concept?: string;
+  questionType?: PlannerCheckpointQuestionType;
+  difficulty?: DifficultyLevel;
+}
+
+export interface PlannerCheckpointAttempt {
+  submittedAt: string;
+  answers: string[];
+  score: number;
+  passed: boolean;
+  obtainedMarks: number;
+  totalMarks: number;
+  feedback: string[];
+  questionResults: PlannerCheckpointQuestionResult[];
 }
 
 export interface PlannerCheckpointSummary {
@@ -258,12 +275,17 @@ export interface PlannerCheckpointSummary {
   taskIndex: number;
   subject: string;
   chapter: string;
+  coverageOutline: string[];
   questions: PlannerCheckpointQuestion[];
   score: number;
   passed: boolean;
   status: "generated" | "submitted";
   feedback: string[];
+  obtainedMarks: number;
+  totalMarks: number;
+  latestAttemptAt?: string | null;
   questionResults: PlannerCheckpointQuestionResult[];
+  attempts: PlannerCheckpointAttempt[];
 }
 
 export interface PlannerQuizContext {

@@ -1,9 +1,12 @@
+import { unstable_cache } from "next/cache";
 import { DEFAULT_APP_SETTINGS_VALUES } from "@/lib/default-app-settings";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { AppSettingsModel } from "@/models/AppSettings";
 
 export type AppSettingsPayload = typeof DEFAULT_APP_SETTINGS_VALUES;
+export const PUBLIC_APP_SETTINGS_CACHE_TAG = "public-app-settings";
+export const PUBLIC_APP_SETTINGS_REVALIDATE_SECONDS = 300;
 
 function deepMerge<T extends Record<string, unknown>>(defaults: T, overrides: Partial<T> | null | undefined): T {
   if (!overrides) {
@@ -78,4 +81,17 @@ export async function getPublicAppSettings() {
     console.error("Failed to load app settings, using defaults", error);
     return mergeWithDefaultAppSettings(null);
   }
+}
+
+const getCachedPublicAppSettingsInternal = unstable_cache(
+  async () => getPublicAppSettings(),
+  [PUBLIC_APP_SETTINGS_CACHE_TAG],
+  {
+    revalidate: PUBLIC_APP_SETTINGS_REVALIDATE_SECONDS,
+    tags: [PUBLIC_APP_SETTINGS_CACHE_TAG]
+  }
+);
+
+export async function getCachedPublicAppSettings() {
+  return getCachedPublicAppSettingsInternal();
 }

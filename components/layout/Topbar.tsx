@@ -33,8 +33,8 @@ export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNext
   const levelLabel = `Lv ${level} ${levelName}`;
 
   return (
-    <header className="sticky top-0 z-30 px-3 pt-3 sm:px-4 sm:pt-4 md:px-6">
-      <div className="glass-nav mx-auto max-w-[1360px] rounded-[30px] border border-[color:var(--panel-border)] px-3 py-3 sm:px-4 md:px-5 lg:px-6">
+    <header className="sticky top-0 z-30 px-2 pt-2 sm:px-4 sm:pt-4 md:px-6">
+      <div className="glass-nav mx-auto max-w-[1360px] rounded-[24px] border border-[color:var(--panel-border)] px-3 py-3 sm:rounded-[30px] sm:px-4 md:px-5 lg:px-6">
         <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,auto)] md:items-center">
           <div className="flex min-w-0 items-start justify-between gap-3 md:items-center">
             <div className="flex min-w-0 items-center gap-3 lg:gap-4">
@@ -49,7 +49,7 @@ export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNext
               ) : null}
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--tertiary-foreground)]">{eyebrow}</p>
-                <p className="truncate font-headline text-[clamp(1.55rem,3vw,1.9rem)] tracking-[-0.03em] text-[var(--foreground)]">{title}</p>
+                <p className="truncate font-headline text-[clamp(1.3rem,6vw,1.9rem)] tracking-[-0.03em] text-[var(--foreground)]">{title}</p>
               </div>
               <CompanionBadge
                 pose={pathname.includes("/focus") ? "sleepy-focus" : pathname.includes("/plan") ? "thinking" : pathname.includes("/track") ? "sparkle" : "wave"}
@@ -58,21 +58,21 @@ export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNext
               />
             </div>
 
-            <div className="flex items-center gap-2 md:hidden">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 md:hidden">
               <div
                 id="streak-counter"
-                className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-high)] px-3 py-1.5 text-xs font-semibold text-[var(--foreground)]"
+                className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--surface-high)] px-2.5 py-1.5 text-xs font-semibold text-[var(--foreground)]"
               >
                 <IconFlame className="h-3.5 w-3.5 text-[#7B6CF6]" />
                 {streak}
               </div>
-              <NotificationBell className="h-11 w-11 rounded-full" />
-              <HelpButton studyStyle={studyStyle} className="h-11 w-11 rounded-full" />
+              <NotificationBell className="h-10 w-10 rounded-full sm:h-11 sm:w-11" />
+              <HelpButton studyStyle={studyStyle} className="hidden h-10 w-10 rounded-full min-[370px]:inline-flex sm:h-11 sm:w-11" />
               <Link
                 href="/dashboard/profile"
-                className="inline-flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-[color:var(--control-border)] bg-[color:var(--control-bg)] p-0.5 shadow-[var(--control-shadow)] transition hover:bg-[color:var(--control-hover-bg)]"
+                className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-[color:var(--control-border)] bg-[color:var(--control-bg)] p-0.5 shadow-[var(--control-shadow)] transition hover:bg-[color:var(--control-hover-bg)] sm:h-11 sm:w-11"
               >
-                <Avatar src={user.image} alt={user.name ?? "Student"} className="h-10 w-10 border-none shadow-none" />
+                <Avatar src={user.image} alt={user.name ?? "Student"} className="h-9 w-9 border-none shadow-none sm:h-10 sm:w-10" />
               </Link>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function Topbar({ streak, level, levelName, levelIcon, xp, progressToNext
           </div>
         </div>
 
-        <div className="mt-3 md:hidden">
+        <div className="mt-2.5 md:hidden">
           <GlobalSearch
             className="relative w-full"
             inputClassName="min-h-11 rounded-full bg-[color:var(--surface-highest)] pl-11"

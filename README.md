@@ -42,6 +42,12 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
+4. Generate the public study-guide dataset
+
+```bash
+npm run content:generate
+```
+
 ## Environment Variables
 
 Required core variables:
@@ -51,10 +57,13 @@ Required core variables:
 - `NEXTAUTH_URL`
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
+- `NEXT_PUBLIC_GA_MEASUREMENT_ID`
 
 Email and notification variables:
 
 - `APP_URL`
+- `GOOGLE_SITE_VERIFICATION`
+- `BING_SITE_VERIFICATION`
 - `EMAIL_FROM`
 - `SMTP_HOST`
 - `SMTP_PORT`

@@ -3,10 +3,10 @@ import { z } from "zod";
 import { NextResponse } from "next/server";
 import { applyRouteRateLimit, requireUser, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
-import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import { logActivity } from "@/lib/progress";
-import { StudyPlanModel } from "@/models/StudyPlan";
+import { createOrGetPlannerCheckpoint, evaluatePlannerCheckpointAttempt } from "@/lib/planner-assessment";
 import { PlannerCheckpointModel } from "@/models/PlannerCheckpoint";
+import { StudyPlanModel } from "@/models/StudyPlan";
 
 const createSchema = z.object({
   planId: z.string(),
@@ -65,6 +65,90 @@ function plannerDetails(plan: Parameters<typeof plannerSummary>[0]) {
   };
 }
 
+function serializeCheckpoint(checkpoint: {
+  _id: Types.ObjectId | string;
+  planId: Types.ObjectId | string;
+  date: string;
+  taskIndex: number;
+  subject: string;
+  chapter: string;
+  coverageOutline?: string[];
+  questions?: Array<{
+    prompt: string;
+    concept: string;
+    difficulty: "easy" | "medium" | "hard";
+    type: "objective" | "fill_blank" | "short" | "long" | "numerical" | "case";
+    options?: string[];
+    answerKey?: string;
+    rubric?: string;
+    maxMarks: number;
+  }>;
+  score?: number;
+  passed?: boolean;
+  status?: "generated" | "submitted";
+  feedback?: string[];
+  obtainedMarks?: number;
+  totalMarks?: number;
+  latestAttemptAt?: Date | string | null;
+  questionResults?: Array<{
+    questionIndex: number;
+    obtainedMarks: number;
+    maxMarks: number;
+    feedback: string;
+    recommendedAction?: string;
+    concept?: string;
+    questionType?: string;
+    difficulty?: string;
+  }>;
+  attempts?: Array<{
+    submittedAt: Date | string;
+    answers: string[];
+    score: number;
+    passed: boolean;
+    obtainedMarks: number;
+    totalMarks: number;
+    feedback: string[];
+    questionResults: Array<{
+      questionIndex: number;
+      obtainedMarks: number;
+      maxMarks: number;
+      feedback: string;
+      recommendedAction?: string;
+      concept?: string;
+      questionType?: string;
+      difficulty?: string;
+    }>;
+  }>;
+}) {
+  return {
+    _id: checkpoint._id.toString(),
+    planId: checkpoint.planId.toString(),
+    date: checkpoint.date,
+    taskIndex: checkpoint.taskIndex,
+    subject: checkpoint.subject,
+    chapter: checkpoint.chapter,
+    coverageOutline: checkpoint.coverageOutline ?? [],
+    questions: checkpoint.questions ?? [],
+    score: checkpoint.score ?? 0,
+    passed: Boolean(checkpoint.passed),
+    status: checkpoint.status ?? "generated",
+    feedback: checkpoint.feedback ?? [],
+    obtainedMarks: checkpoint.obtainedMarks ?? 0,
+    totalMarks: checkpoint.totalMarks ?? 0,
+    latestAttemptAt: checkpoint.latestAttemptAt ? new Date(checkpoint.latestAttemptAt).toISOString() : null,
+    questionResults: (checkpoint.questionResults ?? []).map((result) => ({
+      ...result
+    })),
+    attempts: (checkpoint.attempts ?? []).map((attempt) => ({
+      ...attempt,
+      submittedAt: new Date(attempt.submittedAt).toISOString(),
+      questionResults: (attempt.questionResults ?? []).map((result) => ({
+        ...result
+      }))
+    }))
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const authResult = await requireUser();
@@ -79,17 +163,6 @@ export async function POST(request: Request) {
     }
 
     await connectToDatabase();
-    const existing = await PlannerCheckpointModel.findOne({
-      userId: authResult.userId,
-      planId: parsed.data.planId,
-      date: parsed.data.date,
-      taskIndex: parsed.data.taskIndex
-    }).lean();
-
-    if (existing) {
-      return NextResponse.json({ checkpoint: existing });
-    }
-
     const plan = await StudyPlanModel.findOne({ _id: parsed.data.planId, userId: authResult.userId });
     if (!plan) {
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
@@ -107,52 +180,9 @@ export async function POST(request: Request) {
         )
       : null;
 
-    const generated = await generateJsonWithFallback<{
-      questions: Array<{
-        prompt: string;
-        type: "objective" | "fill_blank" | "short" | "long" | "numerical";
-        options?: string[];
-        answerKey?: string;
-        rubric?: string;
-        maxMarks: number;
-      }>;
-    }>({
-      systemPrompt: "You create accurate chapter checkpoint tests for school students. Return valid JSON only.",
-      prompt: `Create a mixed-format checkpoint test for this study task.
-
-Subject: ${task.subject}
-Chapter: ${task.chapter ?? task.topic}
-Exam: ${task.examName ?? examContext?.examName ?? "Upcoming exam"}
-Board: ${parsed.data.board ?? (plan.studyContext as { board?: string } | null)?.board ?? "CBSE"}
-Class: ${parsed.data.className ?? (plan.studyContext as { className?: string } | null)?.className ?? ""}
-Stream: ${parsed.data.stream ?? (plan.studyContext as { stream?: string } | null)?.stream ?? ""}
-
-Return ONLY this exact JSON format:
-{
-  "questions": [
-    {
-      "prompt": "",
-      "type": "objective",
-      "options": ["", "", "", ""],
-      "answerKey": "",
-      "rubric": "",
-      "maxMarks": 2
-    }
-  ]
-}
-
-Rules:
-- Create exactly 5 questions.
-- Include at least 1 objective, 1 fill_blank, 1 short, and 1 long or numerical question.
-- Keep the final total marks between 10 and 14.
-- For objective questions, include exactly 4 options and set answerKey to the correct option text.
-- For fill_blank questions, set answerKey to the exact expected answer.
-- For short/long/numerical questions, include a concise rubric the evaluator can score against.`
-    });
-
-    const checkpoint = await PlannerCheckpointModel.create({
+    const checkpoint = await createOrGetPlannerCheckpoint({
       userId: authResult.userId,
-      planId: plan._id,
+      planId: plan._id.toString(),
       date: parsed.data.date,
       taskIndex: parsed.data.taskIndex,
       subject: task.subject,
@@ -160,15 +190,15 @@ Rules:
       examName: task.examName ?? examContext?.examName ?? "",
       board: parsed.data.board ?? (plan.studyContext as { board?: string } | null)?.board ?? "",
       className: parsed.data.className ?? (plan.studyContext as { className?: string } | null)?.className ?? "",
-      stream: parsed.data.stream ?? (plan.studyContext as { stream?: string } | null)?.stream ?? "",
-      questions: (generated.data.questions ?? []).slice(0, 5)
+      stream: parsed.data.stream ?? (plan.studyContext as { stream?: string } | null)?.stream ?? ""
     });
 
-    task.checkpointStatus = "checkpoint_required";
+    task.checkpointStatus = checkpoint.passed ? "passed" : "checkpoint_required";
     task.checkpointId = checkpoint._id.toString();
+    task.checkpointScore = checkpoint.score;
     await plan.save();
 
-    return NextResponse.json({ checkpoint });
+    return NextResponse.json({ checkpoint: serializeCheckpoint(checkpoint.toObject()) });
   } catch (error) {
     return routeError("planner-checkpoint:create", error);
   }
@@ -197,61 +227,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Checkpoint not found" }, { status: 404 });
     }
 
-    const evaluation = await generateJsonWithFallback<{
-      questionResults: Array<{
-        questionIndex: number;
-        obtainedMarks: number;
-        maxMarks: number;
-        feedback: string;
-      }>;
-      feedback: string[];
-      totalScore: number;
-      passed: boolean;
-    }>({
-      systemPrompt: "You are a strict but fair chapter-checkpoint evaluator. Grade exactly against the provided answer keys and rubrics.",
-      prompt: `Evaluate this checkpoint submission.
-
-Subject: ${checkpoint.subject}
-Chapter: ${checkpoint.chapter}
-
-Questions:
-${JSON.stringify(checkpoint.questions)}
-
-Student answers:
-${JSON.stringify(parsed.data.answers)}
-
-Return ONLY this exact JSON format:
-{
-  "questionResults": [
-    {
-      "questionIndex": 0,
-      "obtainedMarks": 0,
-      "maxMarks": 2,
-      "feedback": ""
-    }
-  ],
-  "feedback": ["", ""],
-  "totalScore": 0,
-  "passed": false
-}
-
-Rules:
-- Objective and fill_blank questions must match the intended answer closely.
-- Long, short, and numerical answers should be graded using the rubric.
-- The student passes only if totalScore is 50 or above out of 100.`
-    });
-
-    checkpoint.status = "submitted";
-    checkpoint.score = Math.max(0, Math.min(100, Math.round(evaluation.data.totalScore ?? 0)));
-    checkpoint.passed = Boolean(evaluation.data.passed ?? checkpoint.score >= 50);
-    checkpoint.feedback = (evaluation.data.feedback ?? []).slice(0, 6);
-    checkpoint.questionResults = (evaluation.data.questionResults ?? []).map((result) => ({
-      questionIndex: result.questionIndex,
-      obtainedMarks: result.obtainedMarks,
-      maxMarks: result.maxMarks,
-      feedback: result.feedback
-    }));
-    await checkpoint.save();
+    await evaluatePlannerCheckpointAttempt(checkpoint as never, parsed.data.answers);
 
     const plan = await StudyPlanModel.findOne({ _id: checkpoint.planId, userId: authResult.userId });
     if (!plan) {
@@ -284,7 +260,7 @@ Rules:
     const planDoc = plan.toObject() as Parameters<typeof plannerDetails>[0];
 
     return NextResponse.json({
-      checkpoint,
+      checkpoint: serializeCheckpoint(checkpoint.toObject()),
       selectedPlan: plannerDetails(planDoc),
       summary: plannerSummary(planDoc),
       events

@@ -7,6 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { trackEvent } from "@/lib/analytics";
 import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { CLASS_OPTIONS, SUBJECTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,12 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
     }
 
     queueCelebrationsFromGamification(data.events, "notes");
+    trackEvent("note_generated", {
+      subject: form.subject,
+      className: form.class,
+      detailLevel: form.detailLevel,
+      style: form.style
+    });
 
     window.dispatchEvent(new CustomEvent("tour:note-generated"));
     if (typeof data.visuals?.generated === "number" && data.visuals.generated > 0) {

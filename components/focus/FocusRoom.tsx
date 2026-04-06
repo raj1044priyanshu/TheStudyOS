@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
 import { NextStepCard } from "@/components/shared/NextStepCard";
+import { trackEvent } from "@/lib/analytics";
 import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { getHubHref } from "@/lib/hubs";
 
@@ -262,6 +263,12 @@ export function FocusRoom() {
         throw new Error("Could not save session");
       }
       setCompletion(data);
+      trackEvent("study_session_completed", {
+        subject,
+        duration,
+        completed: wasCompleted,
+        sound: soundUsed
+      });
       queueCelebrationsFromGamification(data.events, "focus");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Could not save session");

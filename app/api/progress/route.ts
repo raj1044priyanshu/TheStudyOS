@@ -61,6 +61,96 @@ export async function GET() {
       .select("subject chapter score passed updatedAt")
       .lean()
   ]);
+  const [weakConcepts, weakQuestionTypes, assessmentTrend, recommendedActions] = await Promise.all([
+    PlannerCheckpointModel.aggregate<{ concept: string; averageScore: number; attempts: number }>([
+      { $match: { userId: objectUserId, "attempts.0": { $exists: true } } },
+      { $unwind: "$attempts" },
+      { $unwind: "$attempts.questionResults" },
+      {
+        $group: {
+          _id: "$attempts.questionResults.concept",
+          averageScore: {
+            $avg: {
+              $cond: [
+                { $gt: ["$attempts.questionResults.maxMarks", 0] },
+                { $divide: ["$attempts.questionResults.obtainedMarks", "$attempts.questionResults.maxMarks"] },
+                0
+              ]
+            }
+          },
+          attempts: { $sum: 1 }
+        }
+      },
+      { $match: { _id: { $ne: "" }, averageScore: { $lt: 0.65 } } },
+      { $sort: { averageScore: 1, attempts: -1 } },
+      { $limit: 6 },
+      {
+        $project: {
+          _id: 0,
+          concept: "$_id",
+          averageScore: { $round: [{ $multiply: ["$averageScore", 100] }, 1] },
+          attempts: 1
+        }
+      }
+    ]),
+    PlannerCheckpointModel.aggregate<{ questionType: string; averageScore: number; attempts: number }>([
+      { $match: { userId: objectUserId, "attempts.0": { $exists: true } } },
+      { $unwind: "$attempts" },
+      { $unwind: "$attempts.questionResults" },
+      {
+        $group: {
+          _id: "$attempts.questionResults.questionType",
+          averageScore: {
+            $avg: {
+              $cond: [
+                { $gt: ["$attempts.questionResults.maxMarks", 0] },
+                { $divide: ["$attempts.questionResults.obtainedMarks", "$attempts.questionResults.maxMarks"] },
+                0
+              ]
+            }
+          },
+          attempts: { $sum: 1 }
+        }
+      },
+      { $match: { _id: { $ne: "" }, averageScore: { $lt: 0.7 } } },
+      { $sort: { averageScore: 1, attempts: -1 } },
+      { $limit: 5 },
+      {
+        $project: {
+          _id: 0,
+          questionType: "$_id",
+          averageScore: { $round: [{ $multiply: ["$averageScore", 100] }, 1] },
+          attempts: 1
+        }
+      }
+    ]),
+    PlannerCheckpointModel.find({ userId: authResult.userId, status: "submitted", latestAttemptAt: { $ne: null } })
+      .sort({ latestAttemptAt: 1 })
+      .limit(20)
+      .select("chapter score latestAttemptAt")
+      .lean(),
+    PlannerCheckpointModel.aggregate<{ chapter: string; concept: string; recommendedAction: string; score: number }>([
+      { $match: { userId: objectUserId, status: "submitted", latestAttemptAt: { $ne: null } } },
+      { $unwind: "$questionResults" },
+      {
+        $match: {
+          "questionResults.recommendedAction": { $ne: "" },
+          $expr: { $lt: ["$questionResults.obtainedMarks", "$questionResults.maxMarks"] }
+        }
+      },
+      { $sort: { latestAttemptAt: -1 } },
+      {
+        $project: {
+          _id: 0,
+          chapter: "$chapter",
+          concept: "$questionResults.concept",
+          recommendedAction: "$questionResults.recommendedAction",
+          score: "$score"
+        }
+      },
+      { $limit: 6 }
+    ])
+  ]);
 
   return NextResponse.json({
     stats: {
@@ -89,6 +179,14 @@ export async function GET() {
       passed: item.passed,
       updatedAt: item.updatedAt
     })),
+    weakConcepts,
+    weakQuestionTypes,
+    assessmentTrend: assessmentTrend.map((item) => ({
+      chapter: item.chapter,
+      score: item.score,
+      date: item.latestAttemptAt
+    })),
+    recommendedActions,
     todayMinutes: activeStats.todayMinutes
   });
 }

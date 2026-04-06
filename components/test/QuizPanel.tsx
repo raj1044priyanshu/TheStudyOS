@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { trackEvent } from "@/lib/analytics";
 import { SUBJECTS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import type { PlannerQuizContext } from "@/types";
@@ -77,6 +78,7 @@ export function QuizPanel() {
   async function createQuiz(next?: { topic: string; subject: string; difficulty: string; numQuestions: number }) {
     const payload = next ?? { topic, subject, difficulty, numQuestions };
     setLoading(true);
+    const source = next ? "retake" : plannerContext ? "planner" : "manual";
     const response = await fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -91,6 +93,12 @@ export function QuizPanel() {
       toast.error(data.error ?? "Could not generate quiz");
       return;
     }
+    trackEvent("quiz_generated", {
+      subject: payload.subject,
+      difficulty: payload.difficulty,
+      questionCount: payload.numQuestions,
+      source
+    });
     router.push(`/dashboard/quiz/${data.quizId}`);
   }
 

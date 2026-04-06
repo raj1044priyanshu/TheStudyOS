@@ -5,11 +5,11 @@ const isDevelopment = process.env.NODE_ENV === "development";
 function buildContentSecurityPolicy() {
   return [
     "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+    `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://res.cloudinary.com https://i.ytimg.com https://lh3.googleusercontent.com",
+    "img-src 'self' data: blob: https://res.cloudinary.com https://i.ytimg.com https://lh3.googleusercontent.com https://www.google-analytics.com",
     "font-src 'self' data:",
-    "connect-src 'self' https://*.pusher.com wss://*.pusher.com https://sockjs-*.pusher.com",
+    "connect-src 'self' https://*.pusher.com wss://*.pusher.com https://sockjs-*.pusher.com https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com",
     "media-src 'self' data: blob: https://assets.mixkit.co",
     "worker-src 'self' blob:",
     "child-src 'self' blob:",
@@ -29,6 +29,9 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
   response.headers.set("Content-Security-Policy", buildContentSecurityPolicy());
+  if (process.env.VERCEL_ENV === "preview") {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("X-Frame-Options", "DENY");

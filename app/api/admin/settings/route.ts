@@ -1,7 +1,8 @@
 export const dynamic = "force-dynamic";
 
+import { revalidateTag } from "next/cache";
 import { createAdminAuditLog } from "@/lib/admin/audit";
-import { getAppSettings, mergeAppSettings, mergeWithDefaultAppSettings } from "@/lib/app-settings";
+import { PUBLIC_APP_SETTINGS_CACHE_TAG, getAppSettings, mergeAppSettings, mergeWithDefaultAppSettings } from "@/lib/app-settings";
 import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
@@ -49,6 +50,7 @@ export async function PATCH(request: Request) {
         summary: "Created site settings",
         after: created.toObject()
       });
+      revalidateTag(PUBLIC_APP_SETTINGS_CACHE_TAG);
       return Response.json({ ok: true, settings: toSerializable(created.toObject()) });
     }
 
@@ -68,6 +70,7 @@ export async function PATCH(request: Request) {
       after: existing.toObject()
     });
 
+    revalidateTag(PUBLIC_APP_SETTINGS_CACHE_TAG);
     return Response.json({ ok: true, settings: toSerializable(existing.toObject()) });
   } catch (error) {
     return routeError("admin:settings:update", error);

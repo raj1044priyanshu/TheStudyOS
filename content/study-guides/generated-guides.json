@@ -1,0 +1,222 @@
+[
+  {
+    "subject": "Biology",
+    "topic": "Photosynthesis",
+    "title": "Photosynthesis study guide",
+    "description": "Understand the role of chlorophyll, light-dependent reactions, and glucose production in a clean revision format.",
+    "intro": "Photosynthesis is the process plants use to convert light energy into chemical energy. It matters because it links sunlight, plant growth, oxygen release, and the food chain.",
+    "keyTakeaways": [
+      "Photosynthesis mainly happens in chloroplasts, especially inside leaf cells.",
+      "Chlorophyll absorbs light and helps start the energy transfer process.",
+      "Plants use carbon dioxide and water to build glucose and release oxygen."
+    ],
+    "sections": [
+      {
+        "heading": "What photosynthesis does",
+        "content": "Photosynthesis stores energy from sunlight in glucose. That stored energy supports plant growth and becomes part of larger food webs."
+      },
+      {
+        "heading": "Inputs and outputs",
+        "content": "The main inputs are carbon dioxide, water, and light energy. The main outputs are glucose and oxygen."
+      },
+      {
+        "heading": "Why the process matters in exams",
+        "content": "Photosynthesis often appears in exams through diagrams, equation-based questions, limiting-factor explanations, and comparisons with respiration."
+      }
+    ],
+    "faqs": [
+      {
+        "question": "Why is chlorophyll important in photosynthesis?",
+        "answer": "Chlorophyll helps absorb light energy so the plant can start the reactions that lead to glucose formation."
+      },
+      {
+        "question": "Why is oxygen released during photosynthesis?",
+        "answer": "Oxygen is released as a by-product during the light-dependent part of the process."
+      },
+      {
+        "question": "What factors affect the rate of photosynthesis?",
+        "answer": "Light intensity, carbon dioxide concentration, water availability, and temperature can all affect the rate."
+      }
+    ],
+    "practiceChecklist": [
+      "Recall the word equation and the role of chlorophyll.",
+      "Explain where photosynthesis happens inside the plant.",
+      "Describe one factor that can limit the process."
+    ],
+    "approvedSources": [
+      {
+        "label": "Internal approved curriculum summary",
+        "note": "Normalized from classroom-safe teaching notes before publication."
+      }
+    ],
+    "indexable": true,
+    "subjectSlug": "biology",
+    "topicSlug": "photosynthesis",
+    "path": "/study-guides/biology/photosynthesis"
+  },
+  {
+    "subject": "Physics",
+    "topic": "Newton's Laws of Motion",
+    "title": "Newton's laws of motion study guide",
+    "description": "Revise inertia, force, acceleration, and action-reaction pairs with an exam-friendly summary.",
+    "intro": "Newton's laws of motion explain how objects behave when forces act on them. They are foundational because they connect motion, mass, and force in one framework.",
+    "keyTakeaways": [
+      "The first law explains inertia and balanced forces.",
+      "The second law links force, mass, and acceleration.",
+      "The third law explains equal and opposite force pairs."
+    ],
+    "sections": [
+      {
+        "heading": "First law",
+        "content": "An object remains at rest or in uniform motion unless an unbalanced external force acts on it. This introduces the idea of inertia."
+      },
+      {
+        "heading": "Second law",
+        "content": "The rate of change of momentum depends on the applied force. In school-level problems this is often simplified as force equals mass times acceleration."
+      },
+      {
+        "heading": "Third law",
+        "content": "Every action has an equal and opposite reaction, but the forces act on different bodies."
+      }
+    ],
+    "faqs": [
+      {
+        "question": "What is inertia?",
+        "answer": "Inertia is the tendency of an object to resist changes to its state of rest or motion."
+      },
+      {
+        "question": "Why do action and reaction forces not cancel each other?",
+        "answer": "They act on different objects, so they do not cancel on the same body."
+      },
+      {
+        "question": "What is the most common exam mistake with Newton's laws?",
+        "answer": "Students often mix up balanced forces with the absence of motion, even though balanced forces can also mean constant velocity."
+      }
+    ],
+    "practiceChecklist": [
+      "State all three laws in clear language.",
+      "Use F = ma correctly in a short problem.",
+      "Identify the action-reaction pair in a real-world example."
+    ],
+    "approvedSources": [
+      {
+        "label": "Internal approved curriculum summary",
+        "note": "Normalized from classroom-safe teaching notes before publication."
+      }
+    ],
+    "indexable": true,
+    "subjectSlug": "physics",
+    "topicSlug": "newton-s-laws-of-motion",
+    "path": "/study-guides/physics/newton-s-laws-of-motion"
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Chemical Bonding",
+    "title": "Chemical bonding study guide",
+    "description": "Review ionic, covalent, and metallic bonding with a structure that is easier to revise from memory.",
+    "intro": "Chemical bonding explains how atoms combine and why substances have different structures and properties. It is a core topic because it connects microscopic particle behavior with visible material properties.",
+    "keyTakeaways": [
+      "Ionic bonding involves transfer of electrons.",
+      "Covalent bonding involves sharing of electrons.",
+      "Bond type helps explain melting point, conductivity, and structure."
+    ],
+    "sections": [
+      {
+        "heading": "Ionic bonding",
+        "content": "Ionic bonding usually happens between metals and non-metals. Electrons are transferred so oppositely charged ions attract each other."
+      },
+      {
+        "heading": "Covalent bonding",
+        "content": "Covalent bonding usually happens between non-metals. Atoms share electrons to complete stable outer shells."
+      },
+      {
+        "heading": "Metallic bonding",
+        "content": "In metals, positive ions are held together by attraction to delocalized electrons. This helps explain conductivity and malleability."
+      }
+    ],
+    "faqs": [
+      {
+        "question": "Why do ionic compounds usually have high melting points?",
+        "answer": "They have strong electrostatic attraction between oppositely charged ions in a lattice."
+      },
+      {
+        "question": "Why can metals conduct electricity?",
+        "answer": "Metals have delocalized electrons that can move through the structure."
+      },
+      {
+        "question": "How can I remember the difference between ionic and covalent bonding?",
+        "answer": "Think of ionic as electron transfer and covalent as electron sharing."
+      }
+    ],
+    "practiceChecklist": [
+      "Compare ionic and covalent bonding in one sentence each.",
+      "Link bond type to one physical property.",
+      "Explain why metallic bonding supports conductivity."
+    ],
+    "approvedSources": [
+      {
+        "label": "Internal approved curriculum summary",
+        "note": "Normalized from classroom-safe teaching notes before publication."
+      }
+    ],
+    "indexable": true,
+    "subjectSlug": "chemistry",
+    "topicSlug": "chemical-bonding",
+    "path": "/study-guides/chemistry/chemical-bonding"
+  },
+  {
+    "subject": "Mathematics",
+    "topic": "Algebraic Expressions",
+    "title": "Algebraic expressions study guide",
+    "description": "Strengthen algebra basics with a clean guide to terms, variables, simplification, and common mistakes.",
+    "intro": "Algebraic expressions are combinations of variables, numbers, and operations. They matter because they form the language used in equations, identities, and higher-level problem solving.",
+    "keyTakeaways": [
+      "Expressions can include constants, variables, coefficients, and terms.",
+      "Like terms can be combined during simplification.",
+      "Careful sign handling is essential in algebra."
+    ],
+    "sections": [
+      {
+        "heading": "Parts of an expression",
+        "content": "A variable represents an unknown value, a coefficient multiplies the variable, and a constant stands alone without a variable."
+      },
+      {
+        "heading": "Simplifying expressions",
+        "content": "Simplification means combining like terms and using operations correctly. Terms must match in variable part before they can be combined."
+      },
+      {
+        "heading": "Common mistakes",
+        "content": "Students often combine unlike terms or lose negative signs while expanding and simplifying."
+      }
+    ],
+    "faqs": [
+      {
+        "question": "What are like terms?",
+        "answer": "Like terms have the same variable part, so they can be combined by adding or subtracting their coefficients."
+      },
+      {
+        "question": "Can I add x and x squared together?",
+        "answer": "No. They are not like terms because the variable parts are different."
+      },
+      {
+        "question": "Why are negative signs such a common problem?",
+        "answer": "Because a sign change can affect every term during subtraction or expansion, so one small mistake changes the whole result."
+      }
+    ],
+    "practiceChecklist": [
+      "Identify variables, coefficients, and constants in one expression.",
+      "Simplify an expression by combining like terms.",
+      "Check all signs before writing the final answer."
+    ],
+    "approvedSources": [
+      {
+        "label": "Internal approved curriculum summary",
+        "note": "Normalized from classroom-safe teaching notes before publication."
+      }
+    ],
+    "indexable": true,
+    "subjectSlug": "mathematics",
+    "topicSlug": "algebraic-expressions",
+    "path": "/study-guides/mathematics/algebraic-expressions"
+  }
+]

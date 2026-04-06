@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { QuizCard } from "@/components/quiz/QuizCard";
 import { QuizResults } from "@/components/quiz/QuizResults";
+import { trackEvent } from "@/lib/analytics";
 import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import type { QuizQuestion } from "@/types";
@@ -91,6 +92,13 @@ export default function DashboardQuizPlayPage({ params }: { params: { id: string
     setFinalScore({
       score: data.result?.correctCount ?? score,
       total: data.result?.totalQuestions ?? quizData.questions.length
+    });
+    const finalPercent =
+      data.result?.percent ?? Math.round(((data.result?.correctCount ?? score) / (data.result?.totalQuestions ?? quizData.questions.length)) * 100);
+    trackEvent("quiz_completed", {
+      subject: quizData.subject,
+      totalQuestions: data.result?.totalQuestions ?? quizData.questions.length,
+      scoreBand: finalPercent >= 80 ? "high" : finalPercent >= 50 ? "mid" : "low"
     });
     queueCelebrationsFromGamification(data.events, "quiz");
     setSubmitted(true);

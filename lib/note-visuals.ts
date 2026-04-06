@@ -38,15 +38,22 @@ export async function generateNoteVisual({
   key,
   subject,
   title,
-  description
+  description,
+  userId
 }: {
   noteId: string;
   key: string;
   subject: string;
   title: string;
   description: string;
+  userId?: string;
 }): Promise<NoteVisual | null> {
-  const generated = await generateImageWithMetadata(buildNoteVisualPrompt({ subject, title, description }), NOTE_VISUAL_SYSTEM_PROMPT);
+  const generated = await generateImageWithMetadata(buildNoteVisualPrompt({ subject, title, description }), NOTE_VISUAL_SYSTEM_PROMPT, {
+    route: "notes:visuals",
+    userId,
+    entityType: "note",
+    entityId: noteId
+  });
 
   if (!generated.data || !generated.mimeType.startsWith("image/")) {
     return null;

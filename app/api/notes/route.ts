@@ -162,11 +162,15 @@ async function generateAndPersistNoteVisuals(note: {
   subject: string;
   title: string;
   content: string;
+  visualGenerationStatus?: string;
+  visualGenerationError?: string;
   visuals?: Array<NoteVisual & { generatedAt: string | Date }>;
   save: () => Promise<unknown>;
-}) {
+}, userId: string) {
   const placeholders = extractNoteDiagramPlaceholders(note.content).slice(0, 8);
   if (!placeholders.length) {
+    note.visualGenerationStatus = "idle";
+    note.visualGenerationError = "";
     return {
       generated: 0,
       missing: 0,
@@ -175,6 +179,7 @@ async function generateAndPersistNoteVisuals(note: {
   }
 
   const visuals: NoteVisual[] = [];
+  const failures: string[] = [];
   for (const placeholder of placeholders) {
     try {
       const visual = await generateNoteVisual({
@@ -182,13 +187,15 @@ async function generateAndPersistNoteVisuals(note: {
         key: placeholder.key,
         subject: note.subject,
         title: note.title,
-        description: placeholder.description
+        description: placeholder.description,
+        userId
       });
 
       if (visual) {
         visuals.push(visual);
       }
     } catch (error) {
+      failures.push(placeholder.key);
       console.error("Failed to generate note visual during note creation", {
         noteId: note._id.toString(),
         key: placeholder.key,
@@ -198,8 +205,10 @@ async function generateAndPersistNoteVisuals(note: {
   }
 
   note.visuals = visuals;
+  note.visualGenerationStatus = failures.length ? (visuals.length ? "partial_error" : "error") : visuals.length ? "ready" : "idle";
+  note.visualGenerationError = failures.length ? `Visual generation failed for: ${failures.join(", ")}` : "";
 
-  if (visuals.length > 0) {
+  if (visuals.length > 0 || failures.length > 0) {
     await note.save();
   }
 
@@ -295,7 +304,7 @@ export async function POST(request: Request) {
       generationMeta: generated.generationMeta,
       tags: [subject, detailLevel, style]
     });
-    const visuals = await generateAndPersistNoteVisuals(note);
+    const visuals = await generateAndPersistNoteVisuals(note, authResult.userId);
 
     const events = await logActivity({
       userId: authResult.userId,

@@ -11,7 +11,7 @@ import { queueCelebrationsFromGamification } from "@/lib/client-celebrations";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PlannerSetupPanel } from "@/components/planner/PlannerSetupPanel";
-import { buildPlannerQuizHref } from "@/lib/planner-utils";
+import { buildPlannerAssessmentHref } from "@/lib/planner-utils";
 import type { PlannerDetails, StudyTask } from "@/types";
 
 export function PlannerView() {
@@ -30,6 +30,29 @@ export function PlannerView() {
 
   const today = new Date().toISOString().slice(0, 10);
   const checkpointEnabled = Boolean(selectedPlan?.exams?.length);
+
+  async function openAssessment(activePlan: PlannerDetails, task: StudyTask, dayDate: string, taskIndex: number) {
+    const response = await fetch("/api/planner/checkpoint", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        planId: activePlan._id,
+        date: dayDate,
+        taskIndex,
+        board: activePlan.studyContext?.board,
+        className: activePlan.studyContext?.className,
+        stream: activePlan.studyContext?.stream
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.checkpoint?._id) {
+      toast.error(data.error ?? `Could not open the assessment for ${task.chapter ?? task.topic}`);
+      return;
+    }
+
+    router.push(buildPlannerAssessmentHref(data.checkpoint._id));
+  }
 
   async function toggleTask(date: string, taskIndex: number, completed: boolean) {
     if (!selectedPlan?._id) return;
@@ -116,19 +139,9 @@ export function PlannerView() {
         <Button
           type="button"
           size="sm"
-          onClick={() =>
-            router.push(
-              buildPlannerQuizHref({
-                subject: task.subject,
-                topic: task.chapter ?? task.topic,
-                planId: activePlan._id,
-                date: dayDate,
-                taskIndex
-              })
-            )
-          }
+          onClick={() => void openAssessment(activePlan, task, dayDate, taskIndex)}
         >
-          {task.checkpointStatus === "revise_again" ? "Retry in Test" : "Go to Test"}
+          {task.checkpointStatus === "revise_again" ? "Retry assessment" : "Open assessment"}
         </Button>
         {task.checkpointStatus === "revise_again" ? (
           <span className="inline-flex items-center rounded-full bg-[#FCA5A5]/14 px-3 py-1.5 text-xs font-medium text-[#B91C1C]">
@@ -223,7 +236,7 @@ export function PlannerView() {
                 <h4 className="mt-2 font-headline text-[clamp(2rem,5vw,2.5rem)] tracking-[-0.03em] text-[var(--foreground)]">Study grid</h4>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm text-[var(--muted-foreground)]">Chapter completion unlocks only after passing the linked test.</p>
+                <p className="text-sm text-[var(--muted-foreground)]">Chapter completion unlocks only after passing the linked assessment.</p>
                 <Link id="focus-room-link" href="/dashboard/study?tool=focus-room" className="text-sm font-medium text-[#7B6CF6]">
                   <span className="inline-flex items-center gap-1.5">
                     <IconPlayerPlay className="h-3.5 w-3.5" />

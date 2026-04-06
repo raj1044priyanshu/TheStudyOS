@@ -1,0 +1,53 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="48" x2="432" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF4DE" />
+      <stop offset="0.52" stop-color="#F6D5BA" />
+      <stop offset="1" stop-color="#D4E8D7" />
+    </linearGradient>
+    <radialGradient id="face" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 182) rotate(90) scale(188 180)">
+      <stop stop-color="#FFF8F1" />
+      <stop offset="1" stop-color="#F5C9B2" />
+    </radialGradient>
+    <linearGradient id="hood" x1="166" y1="92" x2="352" y2="404" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE8D4" />
+      <stop offset="1" stop-color="#E8A98D" />
+    </linearGradient>
+    <linearGradient id="book" x1="168" y1="264" x2="348" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDF9F3" />
+      <stop offset="1" stop-color="#F1E1D0" />
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="256" cy="420" rx="130" ry="34" fill="#6F4F59" opacity="0.15" />
+  <circle cx="256" cy="256" r="208" fill="url(#bg)" />
+
+  <path d="M160 220C132 190 118 156 130 128C144 96 178 92 206 116" stroke="#6B4A52" stroke-width="24" stroke-linecap="round" />
+  <path d="M352 220C380 190 394 156 382 128C368 96 334 92 306 116" stroke="#6B4A52" stroke-width="24" stroke-linecap="round" />
+
+  <path d="M168 122C168 84 206 54 256 54C306 54 344 84 344 122V258C344 317 304 366 256 366C208 366 168 317 168 258V122Z" fill="url(#hood)" />
+  <path d="M192 130C192 101 220 78 256 78C292 78 320 101 320 130V248C320 296 290 334 256 334C222 334 192 296 192 248V130Z" fill="url(#face)" />
+
+  <circle cx="212" cy="204" r="16" fill="#4B3439" />
+  <circle cx="300" cy="204" r="16" fill="#4B3439" />
+  <circle cx="188" cy="230" r="17" fill="#F2AEB2" opacity="0.72" />
+  <circle cx="324" cy="230" r="17" fill="#F2AEB2" opacity="0.72" />
+  <path d="M222 248C238 264 274 264 290 248" stroke="#4B3439" stroke-width="12" stroke-linecap="round" />
+  <path d="M196 166C208 154 226 150 238 156" stroke="#6B4A52" stroke-width="10" stroke-linecap="round" />
+  <path d="M274 156C286 150 304 154 316 166" stroke="#6B4A52" stroke-width="10" stroke-linecap="round" />
+
+  <path d="M180 272C180 238 212 214 256 214C300 214 332 238 332 272V338C332 379 298 414 256 414C214 414 180 379 180 338V272Z" fill="#F0B89A" />
+  <path d="M170 274C146 296 136 328 140 366" stroke="#6B4A52" stroke-width="24" stroke-linecap="round" />
+  <path d="M342 274C366 296 376 328 372 366" stroke="#6B4A52" stroke-width="24" stroke-linecap="round" />
+
+  <rect x="158" y="278" width="196" height="124" rx="36" fill="url(#book)" stroke="#6B4A52" stroke-width="12" />
+  <path d="M256 278V402" stroke="#E4CDB9" stroke-width="8" />
+  <path d="M184 314H238" stroke="#DAC0A6" stroke-width="8" stroke-linecap="round" />
+  <path d="M274 314H328" stroke="#DAC0A6" stroke-width="8" stroke-linecap="round" />
+  <path d="M184 344H230" stroke="#DAC0A6" stroke-width="8" stroke-linecap="round" />
+  <path d="M282 344H328" stroke="#DAC0A6" stroke-width="8" stroke-linecap="round" />
+
+  <path d="M218 70C216 50 234 38 252 52C262 38 286 42 288 64C290 90 258 106 218 70Z" fill="#B6D7BE" stroke="#6B4A52" stroke-width="10" stroke-linejoin="round" />
+  <circle cx="146" cy="116" r="12" fill="#FFF7DB" />
+  <path d="M370 98L378 120L400 128L378 136L370 158L362 136L340 128L362 120L370 98Z" fill="white" opacity="0.95" />
+</svg>

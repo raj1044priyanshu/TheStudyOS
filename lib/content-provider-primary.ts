@@ -1,3 +1,5 @@
+import { isImagenModel, resolveAiProviderConfig } from "@/lib/ai-provider-config";
+
 interface ProviderPart {
   text?: string;
   inlineData?: {
@@ -10,6 +12,12 @@ interface ProviderPart {
   };
 }
 
+interface PrimaryUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+}
+
 interface PrimaryContentResponse {
   text?: string;
   candidates?: Array<{
@@ -17,12 +25,27 @@ interface PrimaryContentResponse {
       parts?: ProviderPart[];
     };
   }>;
+  usageMetadata?: PrimaryUsageMetadata;
+}
+
+interface ImagenResponse {
+  data?: Array<{
+    b64_json?: string;
+  }>;
+}
+
+interface UsageSummary {
+  promptTokens: number;
+  outputTokens: number;
+  totalTokens: number;
 }
 
 export interface GeneratedTextResult {
   text: string;
   provider: "primary";
   model: string;
+  keyFingerprint: string;
+  usage: UsageSummary;
 }
 
 export interface GeneratedImageResult {
@@ -31,45 +54,80 @@ export interface GeneratedImageResult {
   provider: "primary";
   model: string;
   captions: string[];
+  keyFingerprint: string;
+  imageCount: number;
+  usage: UsageSummary;
 }
 
 type MultimodalInputPart =
   | { type: "text"; text: string }
   | { type: "image"; data: string; mimeType: string };
 
-const PRIMARY_API_BASE = (process.env.CONTENT_PRIMARY_API_BASE || "https://generativelanguage.googleapis.com/v1beta").replace(/\/$/, "");
-const PRIMARY_TEXT_MODELS = [process.env.CONTENT_PRIMARY_TEXT_MODEL || "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
-const PRIMARY_MULTIMODAL_MODEL = process.env.CONTENT_PRIMARY_MULTIMODAL_MODEL || process.env.CONTENT_PRIMARY_TEXT_MODEL || "gemini-2.5-flash";
-const PRIMARY_IMAGE_MODELS = [process.env.CONTENT_PRIMARY_IMAGE_MODEL || "gemini-3.1-flash-image-preview", "gemini-2.5-flash-image"];
+function uniqueModels(values: Array<string | null | undefined>) {
+  const seen = new Set<string>();
+  const models: string[] = [];
 
-function getPrimaryApiKey() {
-  if (!process.env.CONTENT_PRIMARY_API_KEY) {
+  for (const value of values) {
+    const normalized = value?.trim();
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+
+    seen.add(normalized);
+    models.push(normalized);
+  }
+
+  return models;
+}
+
+async function getPrimaryConfig() {
+  const config = await resolveAiProviderConfig("primary");
+  if (!config.apiKey) {
     throw new Error("CONTENT_PRIMARY_API_KEY is missing");
   }
 
-  return process.env.CONTENT_PRIMARY_API_KEY;
+  return config;
 }
 
-function buildPrimaryUrl(model: string) {
-  return `${PRIMARY_API_BASE}/models/${encodeURIComponent(model)}:generateContent`;
+function buildPrimaryUrl(apiBase: string, model: string) {
+  return `${apiBase}/models/${encodeURIComponent(model)}:generateContent`;
+}
+
+function buildImagenUrl(apiBase: string) {
+  const normalized = apiBase.endsWith("/v1beta") ? apiBase : `${apiBase.replace(/\/$/, "")}/v1beta`;
+  return `${normalized}/openai/images/generations`;
+}
+
+function toUsageSummary(input?: PrimaryUsageMetadata): UsageSummary {
+  return {
+    promptTokens: input?.promptTokenCount ?? 0,
+    outputTokens: input?.candidatesTokenCount ?? 0,
+    totalTokens: input?.totalTokenCount ?? 0
+  };
 }
 
 async function requestPrimaryContent({
+  apiBase,
+  apiKey,
   model,
   systemPrompt,
   parts,
-  temperature
+  temperature,
+  responseModalities
 }: {
+  apiBase: string;
+  apiKey: string;
   model: string;
   systemPrompt?: string;
   parts: MultimodalInputPart[];
   temperature?: number;
+  responseModalities?: string[];
 }) {
-  const response = await fetch(buildPrimaryUrl(model), {
+  const response = await fetch(buildPrimaryUrl(apiBase, model), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-goog-api-key": getPrimaryApiKey()
+      "x-goog-api-key": apiKey
     },
     body: JSON.stringify({
       contents: [
@@ -94,10 +152,11 @@ async function requestPrimaryContent({
             }
           }
         : {}),
-      ...(typeof temperature === "number"
+      ...((typeof temperature === "number" || responseModalities?.length)
         ? {
             generationConfig: {
-              temperature
+              ...(typeof temperature === "number" ? { temperature } : {}),
+              ...(responseModalities?.length ? { responseModalities } : {})
             }
           }
         : {})
@@ -110,6 +169,40 @@ async function requestPrimaryContent({
   }
 
   return (await response.json()) as PrimaryContentResponse;
+}
+
+async function requestImagenContent({
+  apiBase,
+  apiKey,
+  model,
+  prompt
+}: {
+  apiBase: string;
+  apiKey: string;
+  model: string;
+  prompt: string;
+}) {
+  const response = await fetch(buildImagenUrl(apiBase), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json"
+    })
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(detail || `Imagen request failed for ${model}`);
+  }
+
+  return (await response.json()) as ImagenResponse;
 }
 
 function extractText(response: PrimaryContentResponse) {
@@ -144,11 +237,15 @@ function extractInlineImage(part: ProviderPart) {
 }
 
 export async function generatePrimaryTextWithMetadata(prompt: string, systemPrompt?: string): Promise<GeneratedTextResult> {
+  const config = await getPrimaryConfig();
   const errors: string[] = [];
+  const models = uniqueModels([config.textModel, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"]);
 
-  for (const model of PRIMARY_TEXT_MODELS) {
+  for (const model of models) {
     try {
       const response = await requestPrimaryContent({
+        apiBase: config.apiBase,
+        apiKey: config.apiKey,
         model,
         systemPrompt,
         parts: [{ type: "text", text: prompt }],
@@ -159,7 +256,9 @@ export async function generatePrimaryTextWithMetadata(prompt: string, systemProm
         return {
           text,
           provider: "primary",
-          model
+          model,
+          keyFingerprint: config.keyFingerprint,
+          usage: toUsageSummary(response.usageMetadata)
         };
       }
       errors.push(`${model}: empty response`);
@@ -183,8 +282,12 @@ export async function generatePrimaryMultimodalText({
   parts: MultimodalInputPart[];
   systemPrompt?: string;
 }) {
+  const config = await getPrimaryConfig();
+  const model = config.multimodalModel || config.textModel;
   const response = await requestPrimaryContent({
-    model: PRIMARY_MULTIMODAL_MODEL,
+    apiBase: config.apiBase,
+    apiKey: config.apiKey,
+    model,
     systemPrompt,
     parts
   });
@@ -194,18 +297,59 @@ export async function generatePrimaryMultimodalText({
     throw new Error("Primary multimodal response was empty");
   }
 
-  return text;
+  return {
+    text,
+    provider: "primary" as const,
+    model,
+    keyFingerprint: config.keyFingerprint,
+    usage: toUsageSummary(response.usageMetadata)
+  };
 }
 
 export async function generatePrimaryImageWithMetadata(prompt: string, systemPrompt?: string): Promise<GeneratedImageResult> {
+  const config = await getPrimaryConfig();
   const errors: string[] = [];
+  const models = uniqueModels([config.imageModel, "gemini-2.5-flash-image", "imagen-3.0-generate-002"]);
 
-  for (const model of PRIMARY_IMAGE_MODELS) {
+  for (const model of models) {
     try {
+      if (isImagenModel(model)) {
+        const response = await requestImagenContent({
+          apiBase: config.apiBase,
+          apiKey: config.apiKey,
+          model,
+          prompt: [systemPrompt, prompt].filter(Boolean).join("\n\n")
+        });
+
+        const imageData = response.data?.[0]?.b64_json ?? "";
+        if (imageData) {
+          return {
+            data: imageData,
+            mimeType: "image/png",
+            provider: "primary",
+            model,
+            captions: [],
+            keyFingerprint: config.keyFingerprint,
+            imageCount: 1,
+            usage: {
+              promptTokens: 0,
+              outputTokens: 0,
+              totalTokens: 0
+            }
+          };
+        }
+
+        errors.push(`${model}: no image data returned`);
+        continue;
+      }
+
       const response = await requestPrimaryContent({
+        apiBase: config.apiBase,
+        apiKey: config.apiKey,
         model,
         systemPrompt,
-        parts: [{ type: "text", text: prompt }]
+        parts: [{ type: "text", text: prompt }],
+        responseModalities: ["TEXT", "IMAGE"]
       });
 
       const parts = response.candidates?.flatMap((candidate) => candidate.content?.parts ?? []) ?? [];
@@ -216,7 +360,10 @@ export async function generatePrimaryImageWithMetadata(prompt: string, systemPro
           mimeType: image.mimeType,
           provider: "primary",
           model,
-          captions: parts.map((part) => part.text?.trim()).filter((value): value is string => Boolean(value))
+          captions: parts.map((part) => part.text?.trim()).filter((value): value is string => Boolean(value)),
+          keyFingerprint: config.keyFingerprint,
+          imageCount: 1,
+          usage: toUsageSummary(response.usageMetadata)
         };
       }
 

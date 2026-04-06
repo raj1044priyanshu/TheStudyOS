@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import { IconChecklist, IconSparkles } from "@tabler/icons-react";
+import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { queueCelebrationsFromAchievementResponse } from "@/lib/client-celebrations";
 import { Input } from "@/components/ui/input";
@@ -405,6 +406,11 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
     }
 
     toast.success("Plan generated");
+    trackEvent("study_plan_created", {
+      examCount: payload.confirmedExams?.length ?? 0,
+      focusTopicCount: payload.focusTopics?.length ?? 0,
+      hoursPerDay: payload.hoursPerDay
+    });
     queueCelebrationsFromAchievementResponse(data.events, "planner-create");
   }
 

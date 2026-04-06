@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
+  IconAlertCircle,
   IconArrowRight,
   IconArrowLeft,
   IconCheck,
@@ -12,6 +13,7 @@ import {
   IconPointFilled,
   IconPhotoPlus,
   IconPrinter,
+  IconRefresh,
   IconSparkles,
   IconStarFilled,
   IconZoomIn,
@@ -30,6 +32,8 @@ interface Props {
   subject: string;
   createdAt: string;
   content: string;
+  visualGenerationStatus?: "idle" | "ready" | "partial_error" | "error";
+  visualGenerationError?: string;
   visuals?: NoteVisual[];
 }
 
@@ -118,13 +122,23 @@ function NoteVisualPanel({
   );
 }
 
-export function NoteViewer({ noteId, title, subject, createdAt, content, visuals: initialVisuals = [] }: Props) {
+export function NoteViewer({
+  noteId,
+  title,
+  subject,
+  createdAt,
+  content,
+  visualGenerationStatus = "idle",
+  visualGenerationError = "",
+  visuals: initialVisuals = []
+}: Props) {
   const router = useRouter();
   const [zoom, setZoom] = useState(1);
   const [isMobile, setIsMobile] = useState(false);
   const [visuals, setVisuals] = useState<NoteVisual[]>(initialVisuals);
   const [unavailableVisualKeys, setUnavailableVisualKeys] = useState<string[]>([]);
   const [visualStatus, setVisualStatus] = useState<"idle" | "loading" | "error">("idle");
+  const [visualErrorMessage, setVisualErrorMessage] = useState(visualGenerationError);
   const paperRef = useRef<HTMLDivElement>(null);
   const requestedVisualKeysRef = useRef<Set<string>>(new Set());
 
@@ -153,8 +167,9 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
   useEffect(() => {
     setVisuals(initialVisuals);
     setUnavailableVisualKeys([]);
+    setVisualErrorMessage(visualGenerationError);
     requestedVisualKeysRef.current = new Set(initialVisuals.map((visual) => visual.key));
-  }, [initialVisuals]);
+  }, [initialVisuals, visualGenerationError]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(max-width: 767px)");
@@ -189,6 +204,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
 
         if (!response.ok) {
           setUnavailableVisualKeys((prev) => Array.from(new Set([...prev, ...keysToLoad])));
+          setVisualErrorMessage(typeof data.error === "string" ? data.error : "Study visuals could not be generated right now.");
           setVisualStatus("error");
           return;
         }
@@ -200,15 +216,18 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
           setVisuals(nextVisuals);
           if (unresolvedKeys.length > 0) {
             setUnavailableVisualKeys((prev) => Array.from(new Set([...prev, ...unresolvedKeys])));
+            setVisualErrorMessage(typeof data.error === "string" ? data.error : "Some study visuals could not be generated yet.");
             setVisualStatus("error");
             return;
           }
         }
+        setVisualErrorMessage(typeof data.error === "string" ? data.error : "");
         setVisualStatus("idle");
       } catch (error) {
         if (!active) return;
         console.error("Failed to load note visuals", error);
         setUnavailableVisualKeys((prev) => Array.from(new Set([...prev, ...keysToLoad])));
+        setVisualErrorMessage("Study visuals could not be generated right now.");
         setVisualStatus("error");
       }
     }
@@ -259,8 +278,68 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
     router.push("/dashboard/study?tool=notes");
   }
 
+  async function retryVisualGeneration() {
+    const retryKeys = placeholders
+      .map((placeholder) => placeholder.key)
+      .filter((key) => unavailableVisualKeys.includes(key) || !visualsByKey.has(key));
+
+    if (!retryKeys.length) {
+      setVisualErrorMessage("");
+      return;
+    }
+
+    setVisualStatus("loading");
+    setVisualErrorMessage("");
+    setUnavailableVisualKeys([]);
+
+    try {
+      const response = await fetch(`/api/notes/${noteId}/visuals`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ keys: retryKeys })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setUnavailableVisualKeys(retryKeys);
+        setVisualErrorMessage(typeof data.error === "string" ? data.error : "Study visuals could not be generated right now.");
+        setVisualStatus("error");
+        return;
+      }
+
+      if (Array.isArray(data.visuals)) {
+        setVisuals(data.visuals as NoteVisual[]);
+      }
+
+      const nextVisuals = Array.isArray(data.visuals) ? (data.visuals as NoteVisual[]) : visuals;
+      const nextVisualKeys = new Set(nextVisuals.map((visual) => visual.key));
+      const stillMissing = retryKeys.filter((key) => !nextVisualKeys.has(key));
+      if (stillMissing.length) {
+        setUnavailableVisualKeys(stillMissing);
+        setVisualErrorMessage(typeof data.error === "string" ? data.error : "Some study visuals are still unavailable.");
+        setVisualStatus("error");
+        return;
+      }
+
+      setVisualErrorMessage("");
+      setVisualStatus("idle");
+      toast.success("Study visuals generated.");
+    } catch (error) {
+      console.error("Failed to retry note visuals", error);
+      setUnavailableVisualKeys(retryKeys);
+      setVisualErrorMessage("Study visuals could not be generated right now.");
+      setVisualStatus("error");
+    }
+  }
+
   const effectiveZoom = isMobile ? 1 : zoom;
   let diagramOrdinal = -1;
+  const shouldShowVisualWarning =
+    placeholders.length > 0 &&
+    (visualGenerationStatus === "error" ||
+      visualGenerationStatus === "partial_error" ||
+      visualStatus === "error" ||
+      Boolean(visualErrorMessage));
 
   return (
     <>
@@ -280,6 +359,30 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
             <p className="text-xs leading-5 opacity-90">
               Review key facts carefully before relying on it. {analysis.issues[0] ?? "Some sections did not meet the current note validation rules."}
             </p>
+          </div>
+        ) : null}
+
+        {shouldShowVisualWarning ? (
+          <div className="no-print mx-auto flex max-w-[960px] flex-col gap-3 rounded-[24px] border border-[rgba(245,158,11,0.28)] bg-[rgba(255,247,237,0.94)] px-4 py-4 text-sm text-[#92400E] shadow-[var(--panel-shadow)]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 items-start gap-3">
+                <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-semibold text-[#7C2D12]">
+                    {visualGenerationStatus === "partial_error" || visuals.length > 0
+                      ? "Some study visuals are still missing."
+                      : "Study visuals could not be generated yet."}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[#9A3412]">
+                    {visualErrorMessage || "The note is still fully usable, and you can retry the missing visuals when the image model is available again."}
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => void retryVisualGeneration()} disabled={visualStatus === "loading"}>
+                <IconRefresh className={cn("mr-1 h-3.5 w-3.5", visualStatus === "loading" && "animate-spin")} />
+                {visualStatus === "loading" ? "Retrying..." : "Retry visuals"}
+              </Button>
+            </div>
           </div>
         ) : null}
 

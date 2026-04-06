@@ -1,18 +1,42 @@
 <svg width="256" height="64" viewBox="0 0 256 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="studyos-logo-gradient" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6D23F9" />
-      <stop offset="1" stop-color="#8B5CFF" />
+      <stop stop-color="#FFF4DE" />
+      <stop offset="0.58" stop-color="#F1C8AF" />
+      <stop offset="1" stop-color="#D4E8D7" />
     </linearGradient>
-    <linearGradient id="studyos-text-gradient" x1="68" y1="16" x2="224" y2="48" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#6D23F9" />
-      <stop offset="1" stop-color="#4F46E5" />
+    <radialGradient id="studyos-face" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(32 24) rotate(90) scale(20 18)">
+      <stop stop-color="#FFF8F1" />
+      <stop offset="1" stop-color="#F5C9B2" />
+    </radialGradient>
+    <linearGradient id="studyos-text-gradient" x1="72" y1="16" x2="224" y2="48" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#64423B" />
+      <stop offset="1" stop-color="#7B6CF6" />
     </linearGradient>
   </defs>
 
-  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#studyos-logo-gradient)" />
-  <path d="M40 16H24C19.6 16 16 19.6 16 24C16 28.4 19.6 32 24 32H32.5C35.5 32 38 34.5 38 37.5C38 40.5 35.5 43 32.5 43H16" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M24 48H40C44.4 48 48 44.4 48 40C48 35.6 44.4 32 40 32H31.5C28.5 32 26 29.5 26 26.5C26 23.5 28.5 21 31.5 21H48" stroke="white" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#studyos-logo-gradient)" />
+  <ellipse cx="32" cy="51" rx="13" ry="4" fill="#6F4F59" opacity="0.16" />
 
-  <text x="74" y="41" fill="url(#studyos-text-gradient)" font-family="Space Grotesk, Manrope, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.8">StudyOS</text>
+  <path d="M20 28C15 24 13 20 15 16C17 12 21 12 25 16" stroke="#6B4A52" stroke-width="4.5" stroke-linecap="round" />
+  <path d="M44 28C49 24 51 20 49 16C47 12 43 12 39 16" stroke="#6B4A52" stroke-width="4.5" stroke-linecap="round" />
+
+  <path d="M20 18C20 11 25.4 6 32 6C38.6 6 44 11 44 18V34C44 42 38.6 48 32 48C25.4 48 20 42 20 34V18Z" fill="#F2BFA4" />
+  <path d="M23 18C23 13 27 9 32 9C37 9 41 13 41 18V33C41 39 36.8 44 32 44C27.2 44 23 39 23 33V18Z" fill="url(#studyos-face)" />
+
+  <circle cx="27.5" cy="26" r="2.4" fill="#4B3439" />
+  <circle cx="36.5" cy="26" r="2.4" fill="#4B3439" />
+  <circle cx="24.5" cy="30" r="2.2" fill="#F2AEB2" opacity="0.72" />
+  <circle cx="39.5" cy="30" r="2.2" fill="#F2AEB2" opacity="0.72" />
+  <path d="M28.5 34C30.2 35.7 33.8 35.7 35.5 34" stroke="#4B3439" stroke-width="2.2" stroke-linecap="round" />
+
+  <rect x="18" y="35" width="28" height="15" rx="5" fill="#FDF9F3" stroke="#6B4A52" stroke-width="2.5" />
+  <path d="M32 35V50" stroke="#E4CDB9" stroke-width="1.8" />
+  <path d="M22.5 40H29" stroke="#DAC0A6" stroke-width="1.6" stroke-linecap="round" />
+  <path d="M35 40H41.5" stroke="#DAC0A6" stroke-width="1.6" stroke-linecap="round" />
+
+  <path d="M26 9C25.7 5.5 29.3 4 31.7 6.4C33.4 4 37.5 4.5 37.7 8.3C37.9 12.2 33.1 14.5 26 9Z" fill="#B6D7BE" stroke="#6B4A52" stroke-width="1.8" stroke-linejoin="round" />
+  <path d="M49 12L50.4 15.2L53.6 16.6L50.4 18L49 21.2L47.6 18L44.4 16.6L47.6 15.2L49 12Z" fill="white" opacity="0.9" />
+
+  <text x="74" y="41" fill="url(#studyos-text-gradient)" font-family="Avenir Next, Segoe UI, sans-serif" font-size="34" font-weight="700" letter-spacing="-0.8">StudyOS</text>
 </svg>

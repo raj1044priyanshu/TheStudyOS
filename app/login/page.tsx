@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/auth";
@@ -7,6 +8,15 @@ import { LoginButton } from "@/components/auth/LoginButton";
 import { CompanionBadge, CompanionPanel } from "@/components/companion/StudyCompanion";
 import { connectToDatabase } from "@/lib/mongodb";
 import { UserModel } from "@/models/User";
+
+export const metadata: Metadata = {
+  title: "Sign in",
+  description: "Sign in to your StudyOS workspace.",
+  robots: {
+    index: false,
+    follow: false
+  }
+};
 
 export default async function LoginPage() {
   const session = await auth();
@@ -20,15 +30,15 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6">
+    <main id="top" className="min-h-screen overflow-x-clip px-4 py-6 pt-[max(1rem,env(safe-area-inset-top))] sm:px-6">
       <div className="mx-auto flex max-w-6xl justify-end">
-        <ThemeToggle />
+        <ThemeToggle className="h-10 w-10 rounded-full sm:h-12 sm:w-12" />
       </div>
 
       <div className="mx-auto flex min-h-[calc(100vh-72px)] max-w-6xl items-center justify-center py-6">
         <div className="grid w-full items-center gap-6 lg:grid-cols-[1fr_460px]">
           <div className="hidden space-y-6 lg:block">
-            <Logo />
+            <Logo href="/#top" />
             <p className="glass-pill inline-flex px-4 py-2 text-xs font-medium uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
               Focused study workspace
             </p>
@@ -63,8 +73,8 @@ export default async function LoginPage() {
             </div>
           </div>
 
-          <div className="glass-modal w-full p-8 md:p-10">
-            <Logo compact className="mb-5" />
+          <div className="glass-modal w-full p-6 sm:p-8 md:p-10">
+            <Logo compact className="mb-5" href="/#top" />
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Welcome</p>

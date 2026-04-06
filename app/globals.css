@@ -583,7 +583,7 @@ pre,
 .note-handwritten-heading,
 .note-handwritten-body,
 .note-handwritten-meta {
-  font-family: "Caveat", var(--font-caveat), cursive;
+  font-family: var(--font-handwritten), "Segoe Print", "Bradley Hand", cursive;
 }
 
 .note-handwritten {

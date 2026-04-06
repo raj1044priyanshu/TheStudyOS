@@ -1,7 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  IconArrowUpRight,
   IconArrowRight,
+  IconArrowUpRight,
   IconBook2,
   IconBrain,
   IconCalendarCheck,
@@ -13,12 +14,24 @@ import {
   IconSparkles,
   IconTopologyStar3
 } from "@tabler/icons-react";
+import { TrackedLink } from "@/components/analytics/TrackedLink";
+import { PublicSiteFooter } from "@/components/content/PublicSiteFooter";
+import { PublicSiteHeader } from "@/components/content/PublicSiteHeader";
 import { LandingFeedbackForm } from "@/components/feedback/LandingFeedbackForm";
 import { CompanionBadge, CompanionPanel, StudyCompanion } from "@/components/companion/StudyCompanion";
-import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { Logo } from "@/components/shared/Logo";
-import { getPublicAppSettings } from "@/lib/app-settings";
+import { StructuredData } from "@/components/seo/StructuredData";
+import { buttonVariants } from "@/components/ui/button-styles";
+import { FEATURE_SLUG_BY_TITLE } from "@/content/features";
+import {
+  PUBLIC_APP_SETTINGS_REVALIDATE_SECONDS,
+  getCachedPublicAppSettings
+} from "@/lib/app-settings";
+import { siteConfig } from "@/lib/site-config";
+import {
+  createOrganizationJsonLd,
+  createSoftwareApplicationJsonLd,
+  createWebsiteJsonLd
+} from "@/lib/structured-data";
 
 const FEATURE_ICON_MAP = {
   book: IconBook2,
@@ -31,200 +44,272 @@ const FEATURE_ICON_MAP = {
   chart: IconChartLine
 } as const;
 
+export const revalidate = PUBLIC_APP_SETTINGS_REVALIDATE_SECONDS;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getCachedPublicAppSettings();
+
+  return {
+    title: siteConfig.title,
+    description: settings.landing.heroDescription,
+    alternates: {
+      canonical: "/"
+    }
+  };
+}
+
 export default async function LandingPage() {
-  const settings = await getPublicAppSettings();
+  const settings = await getCachedPublicAppSettings();
   const features = settings.landing.features.map((feature) => ({
     ...feature,
+    slug: FEATURE_SLUG_BY_TITLE[feature.title] ?? "",
     icon: FEATURE_ICON_MAP[feature.iconKey as keyof typeof FEATURE_ICON_MAP] ?? IconSparkles
   }));
 
   return (
-    <main className="min-h-screen pb-12">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 pb-6 pt-6">
-        <Link href="/" className="flex items-center gap-2">
-          <Logo compact />
-        </Link>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link href="/login">
-            <Button size="sm">Sign in</Button>
-          </Link>
-        </div>
-      </div>
+    <>
+      <StructuredData data={[createOrganizationJsonLd(), createWebsiteJsonLd(), createSoftwareApplicationJsonLd()]} />
+      <main id="top" className="min-h-screen overflow-x-clip pb-10 sm:pb-12">
+        <PublicSiteHeader trackingLocation="landing-header" />
 
-      <section className="mx-auto max-w-6xl px-6 pb-16 pt-4">
-        <div className="grid items-start gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="animate-fade-up-soft space-y-6">
-            <p className="glass-pill inline-flex items-center gap-2 px-4 py-2 text-xs font-medium text-[var(--muted-foreground)]">
-              <IconSparkles className="h-3.5 w-3.5 text-[#7B6CF6]" /> {settings.landing.heroEyebrow}
-            </p>
-            <div className="space-y-4">
-              <h1 className="max-w-3xl font-headline text-5xl leading-[0.96] tracking-[-0.03em] text-[var(--foreground)] md:text-7xl">
-                {settings.landing.heroTitle}
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-[var(--muted-foreground)] md:text-lg">
-                {settings.landing.heroDescription}
+        <section className="mx-auto max-w-6xl px-4 pb-14 pt-2 sm:px-6 sm:pb-16 sm:pt-4">
+          <div className="grid items-start gap-5 xl:grid-cols-[1.02fr_0.98fr] xl:gap-6">
+            <div className="animate-fade-up-soft space-y-6">
+              <p className="glass-pill inline-flex items-center gap-2 px-4 py-2 text-xs font-medium text-[var(--muted-foreground)]">
+                <IconSparkles className="h-3.5 w-3.5 text-[#7B6CF6]" /> {settings.landing.heroEyebrow}
               </p>
-            </div>
+              <div className="space-y-4">
+                <h1 className="max-w-3xl font-headline text-[clamp(3rem,13vw,5.8rem)] leading-[0.94] tracking-[-0.04em] text-[var(--foreground)]">
+                  {settings.landing.heroTitle}
+                </h1>
+                <p className="max-w-2xl text-[15px] leading-7 text-[var(--muted-foreground)] sm:text-base sm:leading-8 md:text-lg">
+                  {settings.landing.heroDescription}
+                </p>
+              </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Link href="/login">
-                <Button size="lg" className="gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <TrackedLink
+                  href="/login"
+                  className={`${buttonVariants({ size: "lg" })} gap-2`}
+                  tracking={{
+                    event: "cta_click",
+                    params: {
+                      location: "landing-hero",
+                      label: "Enter StudyOS",
+                      destination: "/login"
+                    }
+                  }}
+                >
                   Enter StudyOS <IconArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/login">
-                <Button variant="secondary" size="lg">
+                </TrackedLink>
+                <TrackedLink
+                  href="/features"
+                  className={buttonVariants({ variant: "secondary", size: "lg" })}
+                  tracking={{
+                    event: "cta_click",
+                    params: {
+                      location: "landing-hero",
+                      label: "Explore the workflow",
+                      destination: "/features"
+                    }
+                  }}
+                >
                   Explore the workflow
-                </Button>
-              </Link>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {settings.landing.highlights.map((item) => (
-                <div key={item.title} className="glass-card p-4">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{item.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p>
-                </div>
-              ))}
-            </div>
-
-            <CompanionPanel
-              pose="wave"
-              eyebrow="Workspace"
-              title="Focused visuals, calm workflow"
-              description="StudyOS keeps its visual language consistent across hero panels, milestones, and helper surfaces without taking attention away from the work."
-              compact
-            />
-          </div>
-
-          <div className="glass-card animate-fade-up-soft p-5 md:p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.heroPanelEyebrow}</p>
-                <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.heroPanelTitle}</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <CompanionBadge pose="sparkle" size={58} />
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#7B6CF6]/12 text-[#7B6CF6]">
-                  <IconArrowUpRight className="h-5 w-5" />
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-4">
-              <div className="rounded-[24px] border border-[color:var(--panel-border)] bg-[color:var(--hero-panel)] p-4">
-                <div className="flex items-center gap-4">
-                  <StudyCompanion pose="sparkle" size={120} compact />
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--brand-700)]">Shared companion</p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Consistent visual accents now carry through empty states, celebrations, and helper surfaces.</p>
-                  </div>
-                </div>
+                </TrackedLink>
               </div>
 
-              <div className="surface-card-strong rounded-[24px] p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Daily rhythm</p>
-                    <p className="mt-2 font-headline text-4xl text-[#7B6CF6]">84%</p>
-                  </div>
-                  <div className="grid gap-2 text-right text-xs text-[var(--muted-foreground)]">
-                    <span>Physics revision</span>
-                    <span>Quiz practice</span>
-                    <span>Mind map review</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                {features.slice(0, 4).map((feature) => (
-                    <div key={feature.title} className="surface-card rounded-[22px] p-4">
-                    <div className="surface-icon mb-3 inline-flex rounded-full p-2">
-                      <feature.icon className="h-[18px] w-[18px]" />
-                    </div>
-                    <h3 className="text-sm font-medium text-[var(--foreground)]">{feature.title}</h3>
-                    <p className="mt-2 text-xs leading-5 text-[var(--muted-foreground)]">{feature.description}</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {settings.landing.highlights.map((item) => (
+                  <div key={item.title} className="glass-card p-4">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{item.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="rounded-[24px] border border-[color:var(--secondary-button-border)] bg-[color:var(--secondary-button-bg)] p-4">
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#7B6CF6]">Feature set</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {features.slice(4).map((feature) => (
-                    <span key={feature.title} className="surface-pill rounded-full px-3 py-1 text-xs text-[var(--muted-foreground)]">
-                      {feature.title}
-                    </span>
+              <CompanionPanel
+                pose="wave"
+                eyebrow="Workspace"
+                title="Focused visuals, calm workflow"
+                description="StudyOS keeps its visual language consistent across hero panels, milestones, and helper surfaces without taking attention away from the work."
+                compact
+              />
+            </div>
+
+            <div className="glass-card animate-fade-up-soft p-4 sm:p-5 md:p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.heroPanelEyebrow}</p>
+                  <h2 className="mt-2 font-headline text-[clamp(2.2rem,7vw,3rem)] tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.heroPanelTitle}</h2>
+                </div>
+                <div className="flex items-center gap-3">
+                  <CompanionBadge pose="sparkle" size={58} />
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#7B6CF6]/12 text-[#7B6CF6]">
+                    <IconArrowUpRight className="h-5 w-5" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 grid gap-4">
+                <div className="rounded-[24px] border border-[color:var(--panel-border)] bg-[color:var(--hero-panel)] p-4">
+                  <div className="flex items-center gap-4">
+                    <StudyCompanion pose="sparkle" size={120} compact />
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--brand-700)]">Shared companion</p>
+                      <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Consistent visual accents now carry through empty states, celebrations, and helper surfaces.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="surface-card-strong rounded-[24px] p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Daily rhythm</p>
+                      <p className="mt-2 font-headline text-4xl text-[#7B6CF6]">84%</p>
+                    </div>
+                    <div className="grid gap-2 text-right text-xs text-[var(--muted-foreground)]">
+                      <span>Physics revision</span>
+                      <span>Quiz practice</span>
+                      <span>Mind map review</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {features.slice(0, 4).map((feature) => (
+                    <Link key={feature.title} href={feature.slug ? `/features/${feature.slug}` : "/features"} className="surface-card rounded-[22px] p-4 transition hover:-translate-y-1">
+                      <div className="surface-icon mb-3 inline-flex rounded-full p-2">
+                        <feature.icon className="h-[18px] w-[18px]" />
+                      </div>
+                      <h3 className="text-sm font-medium text-[var(--foreground)]">{feature.title}</h3>
+                      <p className="mt-2 text-xs leading-5 text-[var(--muted-foreground)]">{feature.description}</p>
+                    </Link>
                   ))}
+                </div>
+
+                <div className="rounded-[24px] border border-[color:var(--secondary-button-border)] bg-[color:var(--secondary-button-bg)] p-4">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#7B6CF6]">Feature set</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {features.slice(4).map((feature) => (
+                      <Link
+                        key={feature.title}
+                        href={feature.slug ? `/features/${feature.slug}` : "/features"}
+                        className="surface-pill rounded-full px-3 py-1 text-xs text-[var(--muted-foreground)] transition hover:text-[var(--foreground)]"
+                      >
+                        {feature.title}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="mb-6 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.platformEyebrow}</p>
-            <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.platformTitle}</h2>
-          </div>
-          <p className="hidden max-w-md text-sm leading-6 text-[var(--muted-foreground)] md:block">
-            {settings.landing.platformDescription}
-          </p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {features.map((feature) => (
-              <div key={feature.title} className="glass-card lift-3d p-5">
-              <div className="mb-4 inline-flex rounded-full bg-[#7B6CF6]/10 p-2.5 text-[#7B6CF6]">
-                <feature.icon className="h-[18px] w-[18px]" />
-              </div>
-              <h3 className="text-base font-medium text-[var(--foreground)]">{feature.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{feature.description}</p>
+        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.platformEyebrow}</p>
+              <h2 className="mt-2 font-headline text-[clamp(2.3rem,6vw,3rem)] tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.platformTitle}</h2>
             </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="glass-card grid gap-6 p-6 md:grid-cols-[0.9fr_1.1fr] md:p-8">
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.trustEyebrow}</p>
-            <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.trustTitle}</h2>
-            <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">
-              {settings.landing.trustDescription}
+            <p className="hidden max-w-md text-sm leading-6 text-[var(--muted-foreground)] md:block">
+              {settings.landing.platformDescription}
             </p>
-            <div className="surface-pill mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-[var(--muted-foreground)]">
-              <IconShieldCheck className="h-4 w-4 text-[#7B6CF6]" />
-              Real data. Real progress. One place.
-            </div>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {settings.landing.testimonials.map((item) => (
-              <div key={item.name} className="surface-card rounded-[22px] p-5">
-                <p className="text-sm leading-6 text-[var(--foreground)]">{`"${item.text}"`}</p>
-                <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{item.name}</p>
-              </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {features.map((feature) => (
+              <Link key={feature.title} href={feature.slug ? `/features/${feature.slug}` : "/features"} className="glass-card lift-3d p-5">
+                <div className="mb-4 inline-flex rounded-full bg-[#7B6CF6]/10 p-2.5 text-[#7B6CF6]">
+                  <feature.icon className="h-[18px] w-[18px]" />
+                </div>
+                <h3 className="text-base font-medium text-[var(--foreground)]">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{feature.description}</p>
+              </Link>
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <LandingFeedbackForm
-        enabled={settings.feedbackEnabled && settings.featureToggles.feedback}
-        title={settings.feedbackPromptTitle}
-        description={settings.feedbackPromptDescription}
-      />
+        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+          <div className="glass-card grid gap-6 p-6 md:grid-cols-[0.9fr_1.1fr] md:p-8">
+            <div>
+              <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{settings.landing.trustEyebrow}</p>
+              <h2 className="mt-2 font-headline text-[clamp(2.3rem,6vw,3rem)] tracking-[-0.03em] text-[var(--foreground)]">{settings.landing.trustTitle}</h2>
+              <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">
+                {settings.landing.trustDescription}
+              </p>
+              <div className="surface-pill mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-[var(--muted-foreground)]">
+                <IconShieldCheck className="h-4 w-4 text-[#7B6CF6]" />
+                Real data. Real progress. One place.
+              </div>
+            </div>
 
-      <footer className="border-t border-[color:var(--panel-border)] py-8 text-center text-sm text-[var(--muted-foreground)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-4 px-6">
-          <Link href="/login">Login</Link>
-          <span>•</span>
-          <span>Built for focused students</span>
-        </div>
-      </footer>
-    </main>
+            <div className="grid gap-4 md:grid-cols-3">
+              {settings.landing.testimonials.map((item) => (
+                <div key={item.name} className="surface-card rounded-[22px] p-5">
+                  <p className="text-sm leading-6 text-[var(--foreground)]">{`"${item.text}"`}</p>
+                  <p className="mt-4 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{item.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {[
+              {
+                href: "/features",
+                title: "Feature pages",
+                description: "See how each StudyOS tool fits into one student workflow."
+              },
+              {
+                href: "/resources",
+                title: "Resources",
+                description: "Read evergreen guides on planning, active recall, and revision."
+              },
+              {
+                href: "/blog",
+                title: "Blog",
+                description: "Explore ideas on connected study systems and sustainable progress."
+              },
+              {
+                href: "/study-guides",
+                title: "Study guides",
+                description: "Browse topic pages built from approved classroom-safe source inputs."
+              }
+            ].map((entry) => (
+              <TrackedLink
+                key={entry.href}
+                href={entry.href}
+                className="glass-card rounded-[26px] p-5 transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(123,108,246,0.14)]"
+                tracking={{
+                  event: "cta_click",
+                  params: {
+                    location: "landing-explore",
+                    label: entry.title,
+                    destination: entry.href
+                  }
+                }}
+              >
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Explore</p>
+                <h2 className="mt-3 text-xl font-semibold text-[var(--foreground)]">{entry.title}</h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--muted-foreground)]">{entry.description}</p>
+                <span className="mt-5 inline-flex items-center gap-1 text-sm font-medium text-[#7B6CF6]">
+                  Open page <IconArrowRight className="h-4 w-4" />
+                </span>
+              </TrackedLink>
+            ))}
+          </div>
+        </section>
+
+        <LandingFeedbackForm
+          enabled={settings.feedbackEnabled && settings.featureToggles.feedback}
+          title={settings.feedbackPromptTitle}
+          description={settings.feedbackPromptDescription}
+        />
+
+        <PublicSiteFooter />
+      </main>
+    </>
   );
 }

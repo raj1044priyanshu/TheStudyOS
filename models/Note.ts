@@ -34,6 +34,8 @@ const NoteSchema = new Schema(
     htmlContent: { type: String, required: true },
     generationMeta: { type: GenerationMetaSchema, default: null },
     visuals: { type: [NoteVisualSchema], default: [] },
+    visualGenerationStatus: { type: String, enum: ["idle", "ready", "partial_error", "error"], default: "idle" },
+    visualGenerationError: { type: String, default: "" },
     isFavorite: { type: Boolean, default: false },
     tags: { type: [String], default: [] }
   },

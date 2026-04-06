@@ -24,6 +24,10 @@ interface ProgressResponse {
   weeklyHeatmap: { date: string; value: number }[];
   weakTopics: { topic: string; score: number }[];
   recentCheckpoints: { subject: string; chapter: string; score: number; passed: boolean; updatedAt: string }[];
+  weakConcepts: { concept: string; averageScore: number; attempts: number }[];
+  weakQuestionTypes: { questionType: string; averageScore: number; attempts: number }[];
+  assessmentTrend: { chapter: string; score: number; date: string }[];
+  recommendedActions: { chapter: string; concept: string; recommendedAction: string; score: number }[];
 }
 
 interface BriefResponse {
@@ -199,6 +203,92 @@ export function TrackOverview() {
           ) : (
             <div className="glass-card rounded-[24px] p-5 text-sm text-[var(--muted-foreground)]">No weak topics flagged right now.</div>
           )}
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="glass-card rounded-[28px] p-5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Where you&apos;re falling short</p>
+            <h3 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Concept gaps</h3>
+            <div className="mt-4 space-y-3">
+              {progress.weakConcepts.length ? (
+                progress.weakConcepts.map((item) => (
+                  <div key={item.concept} className="surface-card rounded-[20px] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-[var(--foreground)]">{item.concept}</p>
+                      <span className="rounded-full bg-[#FCA5A5]/18 px-3 py-1 text-xs font-semibold text-[#B91C1C]">{item.averageScore}%</span>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--muted-foreground)]">{item.attempts} scored question{item.attempts === 1 ? "" : "s"} across recent assessments</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)]">No major concept gaps are showing right now.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="glass-card rounded-[28px] p-5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">What to work on next</p>
+            <h3 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Assessment actions</h3>
+            <div className="mt-4 space-y-3">
+              {progress.recommendedActions.length ? (
+                progress.recommendedActions.map((item, index) => (
+                  <div key={`${item.chapter}-${item.concept}-${index}`} className="surface-card rounded-[20px] p-4">
+                    <p className="font-medium text-[var(--foreground)]">{item.chapter}</p>
+                    <p className="mt-1 text-sm text-[var(--muted-foreground)]">{item.concept}</p>
+                    <p className="mt-3 text-sm leading-6 text-[var(--foreground)]">{item.recommendedAction}</p>
+                    <Link
+                      href={`/dashboard/study?tool=notes&topic=${encodeURIComponent(item.concept || item.chapter)}`}
+                      className="mt-4 inline-flex text-sm font-medium text-[#7B6CF6]"
+                    >
+                      Revise this now
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)]">Complete a few chapter assessments to unlock targeted next steps.</p>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className="glass-card rounded-[28px] p-5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Question-type pattern</p>
+            <h3 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Formats to practice more</h3>
+            <div className="mt-4 space-y-3">
+              {progress.weakQuestionTypes.length ? (
+                progress.weakQuestionTypes.map((item) => (
+                  <div key={item.questionType} className="surface-card rounded-[20px] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium capitalize text-[var(--foreground)]">{item.questionType.replace("_", " ")}</p>
+                      <span className="rounded-full bg-[#FCD34D]/18 px-3 py-1 text-xs font-semibold text-[#A16207]">{item.averageScore}%</span>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--muted-foreground)]">{item.attempts} graded responses</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)]">No weak question format is standing out yet.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="glass-card rounded-[28px] p-5">
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Assessment trend</p>
+            <h3 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Recent chapter scores</h3>
+            <div className="mt-4 space-y-3">
+              {progress.assessmentTrend.length ? (
+                progress.assessmentTrend.slice(-6).reverse().map((item) => (
+                  <div key={`${item.chapter}-${item.date}`} className="surface-card rounded-[20px] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-medium text-[var(--foreground)]">{item.chapter}</p>
+                      <span className="rounded-full bg-[var(--surface-low)] px-3 py-1 text-xs font-semibold text-[var(--foreground)]">{item.score}%</span>
+                    </div>
+                    <p className="mt-2 text-sm text-[var(--muted-foreground)]">{new Date(item.date).toLocaleDateString()}</p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--muted-foreground)]">Your chapter-assessment trend will appear here after the first few attempts.</p>
+              )}
+            </div>
+          </div>
         </div>
       </section>
 

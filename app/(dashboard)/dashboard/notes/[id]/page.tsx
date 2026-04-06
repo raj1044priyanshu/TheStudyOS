@@ -23,6 +23,8 @@ export default async function DashboardNotePage({ params }: { params: { id: stri
       subject={note.subject}
       createdAt={new Date(note.createdAt).toISOString()}
       content={note.content}
+      visualGenerationStatus={note.visualGenerationStatus}
+      visualGenerationError={note.visualGenerationError}
       visuals={(note.visuals ?? []).map(
         (visual: { key: string; description: string; imageUrl: string; provider: string; model: string; generatedAt: Date | string }) => ({
           ...visual,

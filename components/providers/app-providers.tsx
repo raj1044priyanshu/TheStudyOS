@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { CelebrationCenter } from "@/components/celebrations/CelebrationCenter";
 import { GlobalLoadingBar } from "@/components/layout/GlobalLoadingBar";
 import { ErrorReporterProvider } from "@/components/providers/ErrorReporterProvider";
@@ -13,7 +14,9 @@ interface Props {
 export function AppProviders({ children }: Props) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-      <GlobalLoadingBar />
+      <Suspense fallback={null}>
+        <GlobalLoadingBar />
+      </Suspense>
       <ErrorReporterProvider>{children}</ErrorReporterProvider>
       <CelebrationCenter />
       <Toaster

@@ -44,13 +44,11 @@ export function AdminShell({ children, user }: Props) {
   const pathname = usePathname();
 
   return (
-    <div className="app-shell-bg min-h-screen">
+    <div id="top" className="app-shell-bg min-h-screen">
       <div className="mx-auto flex max-w-[1600px] gap-4 px-3 py-3 sm:px-4 md:px-6">
         <aside className="hidden w-[290px] shrink-0 lg:block">
           <div className="glass-card sticky top-3 flex h-[calc(100vh-1.5rem)] flex-col overflow-hidden rounded-[32px] p-5">
-            <Link href="/admin">
-              <Logo className="px-1" textClassName="text-[34px]" subtitleClassName="max-w-[13rem]" />
-            </Link>
+            <Logo className="px-1" textClassName="text-[34px]" subtitleClassName="max-w-[13rem]" href="/admin#top" />
             <div className="mt-5 flex items-center justify-between gap-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Admin Control Plane</p>
               <CompanionBadge pose="thinking" size={52} className="shrink-0" />
@@ -106,24 +104,59 @@ export function AdminShell({ children, user }: Props) {
         </aside>
 
         <div className="min-w-0 flex-1 space-y-4">
-          <div className="glass-nav rounded-[30px] border border-[color:var(--panel-border)] px-4 py-4 lg:hidden">
-            <div className="flex flex-wrap items-center gap-2">
-              {NAV_ITEMS.map((item) => {
-                const active = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm transition",
-                      active ? "bg-[color:var(--nav-active-bg)] text-[var(--foreground)]" : "text-[var(--muted-foreground)]"
-                    )}
+          <div className="space-y-3 lg:hidden">
+            <div className="glass-card rounded-[28px] p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Logo compact href="/admin#top" />
+                  <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Admin Control Plane</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CompanionBadge pose="thinking" size={48} className="hidden sm:inline-flex" />
+                  <button
+                    type="button"
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    className="surface-icon-muted inline-flex h-10 w-10 items-center justify-center rounded-[16px]"
+                    aria-label="Logout"
                   >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
-                  </Link>
-                );
-              })}
+                    <IconLogout className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Avatar src={user.image} alt={user.name ?? "Admin"} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[var(--foreground)]">{user.name ?? "Admin"}</p>
+                    <p className="truncate text-xs text-[var(--muted-foreground)]">{user.email ?? "Admin access"}</p>
+                  </div>
+                </div>
+                <Link href="/dashboard">
+                  <Button variant="secondary">Back to workspace</Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="glass-nav overflow-x-auto rounded-[28px] border border-[color:var(--panel-border)] px-2 py-2">
+              <div className="flex w-max items-center gap-2">
+                {NAV_ITEMS.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm transition",
+                        active ? "bg-[color:var(--nav-active-bg)] text-[var(--foreground)]" : "text-[var(--muted-foreground)]"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

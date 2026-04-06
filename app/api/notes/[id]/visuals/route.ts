@@ -45,6 +45,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
   }
 
   let generated = 0;
+  const failures: string[] = [];
   for (const placeholder of placeholders) {
     if (requestedKeys && !requestedKeys.has(placeholder.key)) {
       continue;
@@ -59,13 +60,15 @@ export async function POST(request: Request, { params }: { params: { id: string 
         key: placeholder.key,
         subject: note.subject,
         title: note.title,
-        description: placeholder.description
+        description: placeholder.description,
+        userId: authResult.userId
       });
       if (visual) {
         visualsByKey.set(placeholder.key, visual);
         generated += 1;
       }
     } catch (error) {
+      failures.push(placeholder.key);
       console.error("Failed to generate note visual", {
         noteId: note._id.toString(),
         key: placeholder.key,
@@ -82,14 +85,17 @@ export async function POST(request: Request, { params }: { params: { id: string 
     ...visual,
     generatedAt: new Date(visual.generatedAt)
   }));
+  note.visualGenerationStatus = failures.length ? (orderedVisuals.length ? "partial_error" : "error") : orderedVisuals.length ? "ready" : "idle";
+  note.visualGenerationError = failures.length ? `Visual generation failed for: ${failures.join(", ")}` : "";
 
-  if (generated > 0) {
+  if (generated > 0 || failures.length > 0) {
     await note.save();
   }
 
   return NextResponse.json({
     visuals: orderedVisuals,
     generated,
-    missing: Math.max(placeholders.length - orderedVisuals.length, 0)
+    missing: Math.max(placeholders.length - orderedVisuals.length, 0),
+    error: note.visualGenerationError || undefined
   });
 }

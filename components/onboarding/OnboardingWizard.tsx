@@ -7,6 +7,7 @@ import { IconAlertTriangle, IconArrowRight, IconCheck, IconChevronRight, IconClo
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { SUBJECT_COLOR_VALUES } from "@/lib/constants";
 import {
@@ -304,6 +305,9 @@ export function OnboardingWizard({ name, initialStep, initialProfile, existingEx
 
   async function completeOnboarding({ skipped = false }: { skipped?: boolean } = {}) {
     const data = await postJson<{ redirectTo: string }>("/api/onboarding/complete");
+    trackEvent("onboarding_complete", {
+      mode: skipped ? "skipped" : setupFinished ? "auto-setup" : "guided"
+    });
     if (skipped) {
       toast.success("Setup skipped. You can always restart the tour from the Help menu.");
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import toast from "react-hot-toast";
+import { trackEvent } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -60,6 +61,11 @@ export function LandingFeedbackForm({ enabled, title, description }: Props) {
     }
 
     toast.success("Feedback sent to the StudyOS admin dashboard.");
+    trackEvent("feedback_submitted", {
+      source: "landing",
+      category: form.category,
+      rating: Number(form.rating)
+    });
     setForm(DEFAULT_FORM);
   }
 
