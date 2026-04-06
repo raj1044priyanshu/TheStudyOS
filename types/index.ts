@@ -405,6 +405,7 @@ export interface HubTabConfig {
   id: HubToolId;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  description?: string;
   component: React.ReactNode;
 }
 

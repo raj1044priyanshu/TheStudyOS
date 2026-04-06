@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function ThemeToggle({ className }: Props) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export function ThemeToggle({ className }: Props) {
     );
   }
 
-  const isDark = theme === "dark";
+  const isDark = resolvedTheme === "dark";
 
   return (
     <button

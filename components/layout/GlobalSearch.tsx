@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { IconSearch } from "@tabler/icons-react";
+import { IconArrowUpRight, IconSearch } from "@tabler/icons-react";
 import { CompanionBadge } from "@/components/companion/StudyCompanion";
 import { Input } from "@/components/ui/input";
 import { FloatingPanel, FloatingPanelScrollArea } from "@/components/ui/floating-panel";
+import { filterSearchShortcuts } from "@/lib/search-shortcuts";
 
 interface SearchResultItem {
   id: string;
-  type: "note" | "quiz" | "planner" | "feature";
+  type: "note" | "quiz" | "planner" | "feature" | "exam" | "revision";
   title: string;
   subtitle: string;
   href: string;
@@ -28,9 +29,11 @@ export function GlobalSearch({ className, inputClassName }: Props) {
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [open, setOpen] = useState(false);
+  const trimmedQuery = query.trim();
+  const shortcutResults = useMemo(() => filterSearchShortcuts(query).slice(0, 8), [query]);
 
   useEffect(() => {
-    if (query.trim().length < 2) {
+    if (trimmedQuery.length < 2) {
       setResults([]);
       setSearching(false);
       return;
@@ -39,7 +42,7 @@ export function GlobalSearch({ className, inputClassName }: Props) {
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setSearching(true);
-      const response = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`, {
+      const response = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}`, {
         signal: controller.signal
       }).catch(() => null);
 
@@ -63,7 +66,7 @@ export function GlobalSearch({ className, inputClassName }: Props) {
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [query]);
+  }, [trimmedQuery]);
 
   useEffect(() => {
     const onMouseDown = (event: MouseEvent) => {
@@ -82,6 +85,23 @@ export function GlobalSearch({ className, inputClassName }: Props) {
     setQuery("");
     setResults([]);
     router.push(item.href);
+  }
+
+  function getResultLabel(type: SearchResultItem["type"]) {
+    switch (type) {
+      case "note":
+        return "Note";
+      case "quiz":
+        return "Quiz";
+      case "planner":
+        return "Plan";
+      case "exam":
+        return "Exam";
+      case "revision":
+        return "Revision";
+      default:
+        return "Shortcut";
+    }
   }
 
   return (
@@ -111,32 +131,82 @@ export function GlobalSearch({ className, inputClassName }: Props) {
           }
         }}
       />
-      {open && (searching || results.length > 0 || query.trim().length >= 2) ? (
+      {open && (trimmedQuery.length < 2 || searching || results.length > 0 || trimmedQuery.length >= 2) ? (
         <FloatingPanel id={resultsId} className="absolute left-0 right-0 top-[3.25rem] z-50">
           <div className="flex items-start justify-between gap-3 px-2 pb-2 pt-1">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Global search</p>
-              <p className="text-sm text-[var(--muted-foreground)]">Your notes, quizzes, plans, and shortcuts.</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Find notes, quizzes, revisions, exams, and shortcuts from one place.</p>
             </div>
             <CompanionBadge pose="thinking" size={54} className="shrink-0" />
           </div>
-          {searching ? <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">Searching...</p> : null}
-          {!searching && results.length === 0 ? <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">No matches found.</p> : null}
-          {!searching && results.length > 0 ? (
-            <FloatingPanelScrollArea className="max-h-[min(60vh,22rem)] space-y-1" role="listbox">
-              {results.map((item) => (
-                <button
-                  key={`${item.type}-${item.id}`}
-                  type="button"
-                  onClick={() => openSearchResult(item)}
-                  className="w-full rounded-[18px] border border-transparent px-3 py-3 text-left transition hover:border-[color:var(--panel-border)] hover:bg-[color:var(--nav-hover-bg)]"
-                >
-                  <p className="text-sm font-medium text-[var(--foreground)]">{item.title}</p>
-                  <p className="text-xs text-[var(--muted-foreground)]">{item.subtitle}</p>
-                </button>
-              ))}
-            </FloatingPanelScrollArea>
-          ) : null}
+          {trimmedQuery.length < 2 ? (
+            <>
+              <div className="px-3 pb-2 pt-1 text-xs text-[var(--muted-foreground)]">
+                {trimmedQuery.length === 0
+                  ? "Quick access for the places students open most."
+                  : "Type one more letter to search your saved content. Quick access stays available below."}
+              </div>
+              {shortcutResults.length ? (
+                <FloatingPanelScrollArea className="max-h-[min(60vh,22rem)] space-y-1" role="listbox">
+                  {shortcutResults.map((shortcut) => (
+                    <button
+                      key={shortcut.id}
+                      type="button"
+                      onClick={() =>
+                        openSearchResult({
+                          id: shortcut.id,
+                          type: "feature",
+                          title: shortcut.title,
+                          subtitle: shortcut.subtitle,
+                          href: shortcut.href
+                        })
+                      }
+                      className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-transparent px-3 py-3 text-left transition hover:border-[color:var(--panel-border)] hover:bg-[color:var(--nav-hover-bg)]"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-[var(--foreground)]">{shortcut.title}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{shortcut.subtitle}</p>
+                      </div>
+                      <span className="inline-flex shrink-0 rounded-full bg-[color:var(--brand-soft)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-700)]">
+                        {shortcut.phase}
+                      </span>
+                    </button>
+                  ))}
+                </FloatingPanelScrollArea>
+              ) : (
+                <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">No quick destination matches that letter yet.</p>
+              )}
+            </>
+          ) : (
+            <>
+              {searching ? <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">Searching...</p> : null}
+              {!searching && results.length === 0 ? <p className="px-3 py-3 text-sm text-[var(--muted-foreground)]">No matches found.</p> : null}
+              {!searching && results.length > 0 ? (
+                <FloatingPanelScrollArea className="max-h-[min(60vh,22rem)] space-y-1" role="listbox">
+                  {results.map((item) => (
+                    <button
+                      key={`${item.type}-${item.id}`}
+                      type="button"
+                      onClick={() => openSearchResult(item)}
+                      className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-transparent px-3 py-3 text-left transition hover:border-[color:var(--panel-border)] hover:bg-[color:var(--nav-hover-bg)]"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-medium text-[var(--foreground)]">{item.title}</p>
+                          <span className="rounded-full bg-[color:var(--brand-soft)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--brand-700)]">
+                            {getResultLabel(item.type)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--muted-foreground)]">{item.subtitle}</p>
+                      </div>
+                      <IconArrowUpRight className="h-4 w-4 shrink-0 text-[var(--tertiary-foreground)]" />
+                    </button>
+                  ))}
+                </FloatingPanelScrollArea>
+              ) : null}
+            </>
+          )}
         </FloatingPanel>
       ) : null}
     </div>

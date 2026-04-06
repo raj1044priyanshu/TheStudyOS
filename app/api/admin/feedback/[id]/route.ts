@@ -1,7 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import { z } from "zod";
 import { createAdminAuditLog } from "@/lib/admin/audit";
-import { requireAdmin, routeError } from "@/lib/api";
+import {
+  buildValidationErrorResponse,
+  objectIdRouteParamSchema,
+  requireRateLimitedAdmin,
+  routeError
+} from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { FeedbackModel } from "@/models/Feedback";
@@ -10,13 +16,32 @@ interface Context {
   params: { id: string };
 }
 
-export async function GET(_request: Request, { params }: Context) {
+const updateSchema = z
+  .object({
+    status: z.enum(["open", "in_review", "resolved", "ignored"]).optional(),
+    priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+    labels: z.array(z.string().trim().min(1).max(50)).max(12).optional(),
+    adminNotes: z.string().max(2000).optional()
+  })
+  .refine((payload) => payload.status || payload.priority || payload.labels || payload.adminNotes !== undefined, {
+    message: "No feedback updates provided."
+  });
+
+export async function GET(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-feedback-detail"
+    });
     if (authResult.error) return authResult.error;
 
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
+
     await connectToDatabase();
-    const item = await FeedbackModel.findById(params.id).lean();
+    const item = await FeedbackModel.findById(parsedId.data).lean();
     if (!item) {
       return Response.json({ error: "Feedback not found." }, { status: 404 });
     }
@@ -29,45 +54,45 @@ export async function GET(_request: Request, { params }: Context) {
 
 export async function PATCH(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-feedback-update"
+    });
     if (authResult.error) return authResult.error;
 
-    const payload = (await request.json().catch(() => null)) as
-      | {
-          status?: "open" | "in_review" | "resolved" | "ignored";
-          priority?: "low" | "medium" | "high" | "urgent";
-          labels?: string[];
-          adminNotes?: string;
-        }
-      | null;
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
-    if (!payload) {
-      return Response.json({ error: "Invalid feedback payload." }, { status: 400 });
+    const payload = updateSchema.safeParse(await request.json().catch(() => null));
+    if (!payload.success) {
+      return buildValidationErrorResponse(payload.error);
     }
 
     await connectToDatabase();
-    const item = await FeedbackModel.findById(params.id);
+    const item = await FeedbackModel.findById(parsedId.data);
     if (!item) {
       return Response.json({ error: "Feedback not found." }, { status: 404 });
     }
 
     const before = item.toObject();
 
-    if (payload.status) {
-      item.status = payload.status;
-      item.resolvedAt = payload.status === "resolved" ? new Date() : null;
+    if (payload.data.status) {
+      item.status = payload.data.status;
+      item.resolvedAt = payload.data.status === "resolved" ? new Date() : null;
     }
 
-    if (payload.priority) {
-      item.priority = payload.priority;
+    if (payload.data.priority) {
+      item.priority = payload.data.priority;
     }
 
-    if (payload.labels) {
-      item.labels = payload.labels;
+    if (payload.data.labels) {
+      item.labels = payload.data.labels;
     }
 
-    if (typeof payload.adminNotes === "string") {
-      item.adminNotes = payload.adminNotes;
+    if (typeof payload.data.adminNotes === "string") {
+      item.adminNotes = payload.data.adminNotes;
     }
 
     await item.save();
@@ -76,8 +101,8 @@ export async function PATCH(request: Request, { params }: Context) {
       actorUserId: authResult.userId,
       action: "feedback.update",
       targetModel: "Feedback",
-      targetId: params.id,
-      summary: `Updated feedback ${params.id}`,
+      targetId: parsedId.data,
+      summary: `Updated feedback ${parsedId.data}`,
       before,
       after: item.toObject()
     });

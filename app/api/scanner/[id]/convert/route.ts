@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, objectIdRouteParamSchema, requireRateLimitedUser, routeError } from "@/lib/api";
 import { ScanResultModel } from "@/models/ScanResult";
 import { NoteModel } from "@/models/Note";
 import { generateTextWithMetadata as generateContentWithMetadata } from "@/lib/content-service";
@@ -8,13 +8,21 @@ import { scheduleRevisionItem } from "@/lib/revision";
 import { extractFormulasFromNote, upsertFormulaEntry } from "@/lib/formula-sheet";
 import { upsertConceptNode } from "@/lib/knowledge-graph";
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "scannerConvert",
+      key: "scanner-convert"
+    });
     if (authResult.error) return authResult.error;
 
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
+
     await connectToDatabase();
-    const scan = await ScanResultModel.findOne({ _id: params.id, userId: authResult.userId });
+    const scan = await ScanResultModel.findOne({ _id: parsedId.data, userId: authResult.userId });
     if (!scan) {
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
     }

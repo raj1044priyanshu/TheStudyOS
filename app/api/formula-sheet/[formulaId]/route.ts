@@ -1,17 +1,25 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, objectIdRouteParamSchema, requireRateLimitedUser, routeError } from "@/lib/api";
 import { FormulaSheetModel } from "@/models/FormulaSheet";
 
-export async function DELETE(_request: Request, { params }: { params: { formulaId: string } }) {
+export async function DELETE(request: Request, { params }: { params: { formulaId: string } }) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "formulaMutation",
+      key: "formula-delete"
+    });
     if (authResult.error) return authResult.error;
+
+    const parsedFormulaId = objectIdRouteParamSchema.safeParse(params.formulaId);
+    if (!parsedFormulaId.success) {
+      return buildValidationErrorResponse(parsedFormulaId.error);
+    }
 
     await connectToDatabase();
     const result = await FormulaSheetModel.updateOne(
-      { userId: authResult.userId, "formulas._id": params.formulaId },
-      { $pull: { formulas: { _id: params.formulaId } } }
+      { userId: authResult.userId, "formulas._id": parsedFormulaId.data },
+      { $pull: { formulas: { _id: parsedFormulaId.data } } }
     );
 
     if (!result.matchedCount) {

@@ -96,6 +96,7 @@ Study Room realtime variables:
 npm run lint
 npm run typecheck
 npm run build
+npm run smoke:routes
 ```
 
 If onboarding routes start returning `404` during local development after route changes, restart with:
@@ -106,13 +107,37 @@ npm run dev:clean
 
 ## Deployment
 
-Deploy on Vercel with the same environment variables used locally.
+Before pushing or deploying, run the full local gate:
 
-If email CTA buttons should open your live site, set:
-
-```env
-APP_URL=https://your-domain.com
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm run smoke:routes
 ```
+
+Then verify these settings in Vercel for both Preview and Production:
+
+- Auth: `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- App URLs: `APP_URL` should match your live domain and `NEXTAUTH_URL`
+- Email and cron: `EMAIL_FROM`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_SECURE`, `CRON_SECRET`
+- Realtime study room: `PUSHER_APP_ID`, `PUSHER_KEY`, `PUSHER_SECRET`, `PUSHER_CLUSTER`, `NEXT_PUBLIC_PUSHER_KEY`, `NEXT_PUBLIC_PUSHER_CLUSTER`
+- Media: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+- Rate limiting: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+
+Notes:
+
+- First-visit theme follows the user system theme. Users can still switch themes manually afterward.
+- Expanded route rate limiting works in production only when the Upstash Redis variables are set.
+- If email CTA buttons should open your live site, `APP_URL` must be the public HTTPS domain.
+
+Recommended post-deploy smoke check:
+
+1. Sign in and confirm the dashboard loads with the expected theme.
+2. Generate or open a note, then verify the handwritten paper styling and PDF export.
+3. Test global search, hub navigation, and mobile navigation.
+4. If enabled in your environment, test scanner upload, study room realtime sync, and admin pages.
+5. Confirm scheduled jobs are present in Vercel and that protected API routes return `429` under repeated abuse instead of failing hard.
 
 ## Notes
 

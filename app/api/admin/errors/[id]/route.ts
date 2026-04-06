@@ -1,7 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import { z } from "zod";
 import { createAdminAuditLog } from "@/lib/admin/audit";
-import { requireAdmin, routeError } from "@/lib/api";
+import {
+  buildValidationErrorResponse,
+  objectIdRouteParamSchema,
+  requireRateLimitedAdmin,
+  routeError
+} from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { AppErrorLogModel } from "@/models/AppErrorLog";
@@ -10,13 +16,25 @@ interface Context {
   params: { id: string };
 }
 
-export async function GET(_request: Request, { params }: Context) {
+const updateSchema = z.object({
+  status: z.enum(["open", "acknowledged", "resolved", "ignored"])
+});
+
+export async function GET(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-error-detail"
+    });
     if (authResult.error) return authResult.error;
 
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
+
     await connectToDatabase();
-    const item = await AppErrorLogModel.findById(params.id).lean();
+    const item = await AppErrorLogModel.findById(parsedId.data).lean();
     if (!item) {
       return Response.json({ error: "Error log not found." }, { status: 404 });
     }
@@ -29,35 +47,38 @@ export async function GET(_request: Request, { params }: Context) {
 
 export async function PATCH(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-error-update"
+    });
     if (authResult.error) return authResult.error;
 
-    const payload = (await request.json().catch(() => null)) as
-      | {
-          status?: "open" | "acknowledged" | "resolved" | "ignored";
-        }
-      | null;
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
-    if (!payload?.status) {
-      return Response.json({ error: "Status is required." }, { status: 400 });
+    const payload = updateSchema.safeParse(await request.json().catch(() => null));
+    if (!payload.success) {
+      return buildValidationErrorResponse(payload.error);
     }
 
     await connectToDatabase();
-    const item = await AppErrorLogModel.findById(params.id);
+    const item = await AppErrorLogModel.findById(parsedId.data);
     if (!item) {
       return Response.json({ error: "Error log not found." }, { status: 404 });
     }
 
     const before = item.toObject();
-    item.status = payload.status;
+    item.status = payload.data.status;
     await item.save();
 
     await createAdminAuditLog({
       actorUserId: authResult.userId,
       action: "error.update",
       targetModel: "AppErrorLog",
-      targetId: params.id,
-      summary: `Marked error ${params.id} as ${payload.status}`,
+      targetId: parsedId.data,
+      summary: `Marked error ${parsedId.data} as ${payload.data.status}`,
       before,
       after: item.toObject()
     });

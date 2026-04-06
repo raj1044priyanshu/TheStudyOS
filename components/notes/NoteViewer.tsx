@@ -331,19 +331,24 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
             <div
               id="note-paper"
               ref={paperRef}
-              className="note-surface relative min-h-[calc(100dvh-7rem)] overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] px-4 pb-8 pt-6 sm:min-h-[1123px] sm:px-10 sm:pb-12 sm:pt-10"
+              className="note-surface relative min-h-[calc(100dvh-7rem)] overflow-hidden rounded-[28px] px-4 pb-8 pt-6 sm:min-h-[1123px] sm:px-10 sm:pb-12 sm:pt-10"
             >
             <header className="relative z-[1] mb-8 border-b border-[color:var(--note-border)] pb-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className={cn("rounded-full px-3 py-1 text-xs font-medium", SUBJECT_COLORS[displaySubject] ?? SUBJECT_COLORS.Other)}>
+                <span
+                  className={cn(
+                    "note-handwritten-meta rounded-full px-3 py-1 text-[0.78rem]",
+                    SUBJECT_COLORS[displaySubject] ?? SUBJECT_COLORS.Other
+                  )}
+                >
                   {displaySubject}
                 </span>
-                <span className="text-sm font-medium text-[var(--note-muted-foreground)]">{displayDate}</span>
+                <span className="note-handwritten-meta text-[0.9rem] text-[var(--note-muted-foreground)]">{displayDate}</span>
               </div>
-              <h1 className="mt-4 font-headline text-4xl tracking-[-0.04em] text-[var(--note-foreground)] sm:text-5xl">{displayTitle}</h1>
+              <h1 className="note-handwritten-heading mt-4 text-[3rem] text-[var(--note-foreground)] sm:text-[3.75rem]">{displayTitle}</h1>
             </header>
 
-            <div className="relative z-[1] space-y-4 text-[15px] leading-7 text-[var(--note-foreground)] sm:text-[18px] sm:leading-8">
+            <div className="note-handwritten-body relative z-[1] space-y-4 text-[1.35rem] text-[var(--note-foreground)] sm:text-[1.55rem]">
               {flowBlocks.map((block, idx) => {
                 if (block.tag === "MARGIN_NOTE") {
                   return null;
@@ -352,7 +357,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
                 if (block.tag === "HEADING1") {
                   return (
                     <section key={idx} className="pt-2">
-                      <h2 className="font-headline text-2xl tracking-[-0.03em] text-[var(--note-foreground)] sm:text-3xl">
+                      <h2 className="note-handwritten-heading text-[2.1rem] text-[var(--note-foreground)] sm:text-[2.6rem]">
                         {renderInlineHighlights(block.value ?? "")}
                       </h2>
                     </section>
@@ -361,7 +366,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
 
                 if (block.tag === "HEADING2") {
                   return (
-                    <h3 key={idx} className="text-lg font-semibold text-[#1F4C8F] sm:text-xl">
+                    <h3 key={idx} className="note-handwritten-heading text-[1.7rem] text-[#1F4C8F] sm:text-[1.95rem]">
                       {renderInlineHighlights(block.value ?? "")}
                     </h3>
                   );
@@ -369,7 +374,7 @@ export function NoteViewer({ noteId, title, subject, createdAt, content, visuals
 
                 if (block.tag === "HEADING3") {
                   return (
-                    <h4 key={idx} className="text-base font-semibold uppercase tracking-[0.08em] text-[#51627C] sm:text-lg">
+                    <h4 key={idx} className="note-handwritten-heading text-[1.45rem] uppercase tracking-[0.08em] text-[#51627C] sm:text-[1.6rem]">
                       {renderInlineHighlights(block.value ?? "")}
                     </h4>
                   );

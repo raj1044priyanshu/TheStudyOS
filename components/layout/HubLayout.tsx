@@ -72,6 +72,7 @@ export function HubLayout({ phase, title, subtitle, stats, tabs = [], defaultTab
                     id={`hub-tab-${phase}-${tab.id}`}
                     type="button"
                     onClick={() => switchTab(tab.id)}
+                    aria-current={active ? "page" : undefined}
                     className={cn(
                       "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition-all duration-150 sm:px-5",
                       active
@@ -85,6 +86,25 @@ export function HubLayout({ phase, title, subtitle, stats, tabs = [], defaultTab
                 );
               })}
             </div>
+            {activePanel ? (
+              <div className="surface-card mt-3 rounded-[20px] px-4 py-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">
+                  You are here
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-[color:var(--brand-soft)] px-3 py-1 text-xs font-medium text-[color:var(--brand-700)]">
+                    {title}
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--foreground)]">{activePanel.label}</span>
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    Tool {tabs.findIndex((tab) => tab.id === activePanel.id) + 1} of {tabs.length}
+                  </span>
+                </div>
+                {activePanel.description ? (
+                  <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{activePanel.description}</p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="glass-card min-h-[380px] rounded-[26px] p-4 sm:p-5 md:p-6">

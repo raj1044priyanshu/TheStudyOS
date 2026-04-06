@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, requireRateLimitedUser, routeError, roomCodeRouteParamSchema } from "@/lib/api";
 import { StudyRoomModel } from "@/models/StudyRoom";
 import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import { pusherServer } from "@/lib/pusher";
@@ -17,15 +17,24 @@ const schema = z.object({
 
 export async function POST(request: Request, { params }: { params: { roomCode: string } }) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "studyRoom",
+      key: "study-room-quiz-battle"
+    });
     if (authResult.error) return authResult.error;
+
+    const parsedRoomCode = roomCodeRouteParamSchema.safeParse(params.roomCode);
+    if (!parsedRoomCode.success) {
+      return buildValidationErrorResponse(parsedRoomCode.error);
+    }
+
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return buildValidationErrorResponse(parsed.error);
     }
 
     await connectToDatabase();
-    const room = await StudyRoomModel.findOne({ roomCode: params.roomCode.toUpperCase(), isActive: true });
+    const room = await StudyRoomModel.findOne({ roomCode: parsedRoomCode.data, isActive: true });
     if (!room) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
     }

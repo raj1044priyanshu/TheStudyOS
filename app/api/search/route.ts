@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { applyRouteRateLimit, requireUser } from "@/lib/api";
+import { requireRateLimitedUser } from "@/lib/api";
+import { SEARCH_SHORTCUTS, filterSearchShortcuts } from "@/lib/search-shortcuts";
+import { ExamModel } from "@/models/Exam";
 import { NoteModel } from "@/models/Note";
 import { QuizModel } from "@/models/Quiz";
+import { RevisionItemModel } from "@/models/RevisionItem";
 import { StudyPlanModel } from "@/models/StudyPlan";
 
 function escapeRegex(input: string) {
@@ -10,11 +13,11 @@ function escapeRegex(input: string) {
 }
 
 export async function GET(request: Request) {
-  const authResult = await requireUser();
+  const authResult = await requireRateLimitedUser(request, {
+    policy: "search",
+    key: "search"
+  });
   if (authResult.error) return authResult.error;
-
-  const rate = await applyRouteRateLimit(`search:${authResult.userId}`);
-  if (rate) return rate;
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q")?.trim() ?? "";
@@ -26,7 +29,7 @@ export async function GET(request: Request) {
   const regex = new RegExp(escapeRegex(q), "i");
   const startsWithRegex = new RegExp(`^${escapeRegex(q)}`, "i");
 
-  const [notes, quizzes, plans] = await Promise.all([
+  const [notes, quizzes, plans, revisions, exams] = await Promise.all([
     NoteModel.find({
       userId: authResult.userId,
       $or: [{ title: startsWithRegex }, { topic: startsWithRegex }, { subject: startsWithRegex }, { title: regex }, { topic: regex }]
@@ -50,6 +53,22 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .limit(2)
       .select("_id name subjects")
+      .lean(),
+    RevisionItemModel.find({
+      userId: authResult.userId,
+      $or: [{ topic: regex }, { subject: regex }]
+    })
+      .sort({ nextReviewDate: 1 })
+      .limit(4)
+      .select("_id topic subject nextReviewDate")
+      .lean(),
+    ExamModel.find({
+      userId: authResult.userId,
+      $or: [{ examName: regex }, { subject: regex }, { board: regex }]
+    })
+      .sort({ examDate: 1 })
+      .limit(4)
+      .select("_id examName subject examDate board")
       .lean()
   ]);
 
@@ -77,14 +96,33 @@ export async function GET(request: Request) {
     href: "/dashboard/plan?tool=planner"
   }));
 
-  const featureResults = [
-    { id: "notes", type: "feature" as const, title: "Open Notes", subtitle: "Generate topper-style notes", href: "/dashboard/study?tool=notes" },
-    { id: "quiz", type: "feature" as const, title: "Open Quiz", subtitle: "Practice MCQs and track scores", href: "/dashboard/test?tool=quiz" },
-    { id: "planner", type: "feature" as const, title: "Open Planner", subtitle: "Schedule your daily tasks", href: "/dashboard/plan?tool=planner" },
-    { id: "progress", type: "feature" as const, title: "Open Track", subtitle: "Review streak and achievements", href: "/dashboard/track" }
-  ].filter((item) => item.title.toLowerCase().includes(q.toLowerCase()) || item.subtitle.toLowerCase().includes(q.toLowerCase()));
+  const revisionResults = revisions.map((item) => ({
+    id: item._id.toString(),
+    type: "revision" as const,
+    title: `${item.subject}: ${item.topic}`,
+    subtitle: `Review due ${new Date(item.nextReviewDate).toLocaleDateString("en-IN")}`,
+    href: "/dashboard/revise?tool=revision-queue"
+  }));
 
-  const results = [...noteResults, ...quizResults, ...planResults, ...featureResults].slice(0, 10);
+  const examResults = exams.map((exam) => ({
+    id: exam._id.toString(),
+    type: "exam" as const,
+    title: `${exam.subject}: ${exam.examName}`,
+    subtitle: `${new Date(exam.examDate).toLocaleDateString("en-IN")}${exam.board ? ` • ${exam.board}` : ""}`,
+    href: "/dashboard/plan?tool=exams"
+  }));
+
+  const featureResults = filterSearchShortcuts(q)
+    .filter((shortcut) => SEARCH_SHORTCUTS.some((candidate) => candidate.id === shortcut.id))
+    .map((shortcut) => ({
+      id: shortcut.id,
+      type: "feature" as const,
+      title: shortcut.title,
+      subtitle: shortcut.subtitle,
+      href: shortcut.href
+    }));
+
+  const results = [...noteResults, ...quizResults, ...planResults, ...revisionResults, ...examResults, ...featureResults].slice(0, 12);
 
   return NextResponse.json({ results });
 }

@@ -1,13 +1,16 @@
 export const dynamic = "force-dynamic";
 
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { UserModel } from "@/models/User";
 
 export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-users-list"
+    });
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();

@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { z } from "zod";
 import { NoteModel } from "@/models/Note";
 import { QuizModel } from "@/models/Quiz";
 import { StudyPlanModel } from "@/models/StudyPlan";
@@ -7,7 +8,12 @@ import { FeedbackModel } from "@/models/Feedback";
 import { AppErrorLogModel } from "@/models/AppErrorLog";
 import { UserModel } from "@/models/User";
 import { createAdminAuditLog } from "@/lib/admin/audit";
-import { requireAdmin, routeError } from "@/lib/api";
+import {
+  buildValidationErrorResponse,
+  objectIdRouteParamSchema,
+  requireRateLimitedAdmin,
+  routeError
+} from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 
@@ -15,20 +21,37 @@ interface Context {
   params: { id: string };
 }
 
-export async function GET(_request: Request, { params }: Context) {
+const updateSchema = z
+  .object({
+    role: z.enum(["student", "admin"]).optional(),
+    status: z.enum(["active", "suspended"]).optional()
+  })
+  .refine((payload) => payload.role || payload.status, {
+    message: "No updates provided."
+  });
+
+export async function GET(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-user-detail"
+    });
     if (authResult.error) return authResult.error;
+
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
     await connectToDatabase();
 
     const [user, noteCount, quizCount, planCount, feedbackCount, errorCount] = await Promise.all([
-      UserModel.findById(params.id).lean(),
-      NoteModel.countDocuments({ userId: params.id }),
-      QuizModel.countDocuments({ userId: params.id }),
-      StudyPlanModel.countDocuments({ userId: params.id }),
-      FeedbackModel.countDocuments({ userId: params.id }),
-      AppErrorLogModel.countDocuments({ affectedUserIds: params.id })
+      UserModel.findById(parsedId.data).lean(),
+      NoteModel.countDocuments({ userId: parsedId.data }),
+      QuizModel.countDocuments({ userId: parsedId.data }),
+      StudyPlanModel.countDocuments({ userId: parsedId.data }),
+      FeedbackModel.countDocuments({ userId: parsedId.data }),
+      AppErrorLogModel.countDocuments({ affectedUserIds: parsedId.data })
     ]);
 
     if (!user) {
@@ -45,11 +68,11 @@ export async function GET(_request: Request, { params }: Context) {
         errorCount
       },
       relatedLinks: [
-        { label: "Notes", href: `/admin/resources?resource=notes&userId=${params.id}` },
-        { label: "Quizzes", href: `/admin/resources?resource=quizzes&userId=${params.id}` },
-        { label: "Plans", href: `/admin/resources?resource=studyPlans&userId=${params.id}` },
-        { label: "Feedback", href: `/admin/feedback?userId=${params.id}` },
-        { label: "Errors", href: `/admin/errors?userId=${params.id}` }
+        { label: "Notes", href: `/admin/resources?resource=notes&userId=${parsedId.data}` },
+        { label: "Quizzes", href: `/admin/resources?resource=quizzes&userId=${parsedId.data}` },
+        { label: "Plans", href: `/admin/resources?resource=studyPlans&userId=${parsedId.data}` },
+        { label: "Feedback", href: `/admin/feedback?userId=${parsedId.data}` },
+        { label: "Errors", href: `/admin/errors?userId=${parsedId.data}` }
       ]
     });
   } catch (error) {
@@ -59,34 +82,36 @@ export async function GET(_request: Request, { params }: Context) {
 
 export async function PATCH(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-user-update"
+    });
     if (authResult.error) return authResult.error;
 
-    const payload = (await request.json().catch(() => null)) as
-      | {
-          role?: "student" | "admin";
-          status?: "active" | "suspended";
-        }
-      | null;
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
-    if (!payload || (!payload.role && !payload.status)) {
-      return Response.json({ error: "No updates provided." }, { status: 400 });
+    const payload = updateSchema.safeParse(await request.json().catch(() => null));
+    if (!payload.success) {
+      return buildValidationErrorResponse(payload.error);
     }
 
     await connectToDatabase();
-    const user = await UserModel.findById(params.id);
+    const user = await UserModel.findById(parsedId.data);
     if (!user) {
       return Response.json({ error: "User not found." }, { status: 404 });
     }
 
     const before = user.toObject();
 
-    if (payload.role) {
-      user.role = payload.role;
+    if (payload.data.role) {
+      user.role = payload.data.role;
     }
 
-    if (payload.status) {
-      user.status = payload.status;
+    if (payload.data.status) {
+      user.status = payload.data.status;
     }
 
     await user.save();

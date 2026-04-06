@@ -1,13 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { IconBook2, IconClockHour4, IconTargetArrow, IconVideo, IconMessageCircleQuestion, IconScan } from "@tabler/icons-react";
 import { HubLayout } from "@/components/layout/HubLayout";
-import { NotesPanel } from "@/components/notes/NotesPanel";
-import { DoubtsPanel } from "@/components/doubts/DoubtsPanel";
-import { FocusRoom } from "@/components/focus/FocusRoom";
-import { VideosPanel } from "@/components/videos/VideosPanel";
-import { Scanner } from "@/components/scanner/Scanner";
+import { HubPanelFallback } from "@/components/layout/HubPanelFallback";
+
+const NotesPanel = dynamic(() => import("@/components/notes/NotesPanel").then((mod) => mod.NotesPanel), {
+  loading: () => <HubPanelFallback text="Loading notes workspace..." />
+});
+const DoubtsPanel = dynamic(() => import("@/components/doubts/DoubtsPanel").then((mod) => mod.DoubtsPanel), {
+  loading: () => <HubPanelFallback text="Loading doubt solver..." />
+});
+const FocusRoom = dynamic(() => import("@/components/focus/FocusRoom").then((mod) => mod.FocusRoom), {
+  loading: () => <HubPanelFallback text="Loading focus room..." />
+});
+const VideosPanel = dynamic(() => import("@/components/videos/VideosPanel").then((mod) => mod.VideosPanel), {
+  loading: () => <HubPanelFallback text="Loading video finder..." />
+});
+const Scanner = dynamic(() => import("@/components/scanner/Scanner").then((mod) => mod.Scanner), {
+  loading: () => <HubPanelFallback text="Loading scanner..." />
+});
 
 export function StudyHubPage() {
   const [notesCount, setNotesCount] = useState(0);
@@ -51,11 +64,41 @@ export function StudyHubPage() {
       stats={stats}
       defaultTab="notes"
       tabs={[
-        { id: "notes", icon: IconBook2, label: "Notes", component: <NotesPanel /> },
-        { id: "doubts", icon: IconMessageCircleQuestion, label: "Doubts", component: <DoubtsPanel /> },
-        { id: "focus-room", icon: IconClockHour4, label: "Focus Room", component: <FocusRoom /> },
-        { id: "videos", icon: IconVideo, label: "Videos", component: <VideosPanel /> },
-        { id: "scanner", icon: IconScan, label: "Scanner", component: <Scanner /> }
+        {
+          id: "notes",
+          icon: IconBook2,
+          label: "Notes",
+          description: "Create paper-style study notes, filter your library, and jump back into saved topics quickly.",
+          component: <NotesPanel />
+        },
+        {
+          id: "doubts",
+          icon: IconMessageCircleQuestion,
+          label: "Doubts",
+          description: "Use this when one blocked concept is slowing down the rest of your study session.",
+          component: <DoubtsPanel />
+        },
+        {
+          id: "focus-room",
+          icon: IconClockHour4,
+          label: "Focus Room",
+          description: "Start a distraction-light study timer with ambient sound and next-step suggestions.",
+          component: <FocusRoom />
+        },
+        {
+          id: "videos",
+          icon: IconVideo,
+          label: "Videos",
+          description: "Find visual explanations when reading alone is not enough for the topic.",
+          component: <VideosPanel />
+        },
+        {
+          id: "scanner",
+          icon: IconScan,
+          label: "Scanner",
+          description: "Capture physical material and convert it into reusable StudyOS study content.",
+          component: <Scanner />
+        }
       ]}
     />
   );

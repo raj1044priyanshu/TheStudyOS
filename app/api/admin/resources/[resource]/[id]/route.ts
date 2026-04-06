@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { getAdminResourceConfig } from "@/lib/admin/resources";
 import { createAdminAuditLog } from "@/lib/admin/audit";
-import { requireAdmin, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, objectIdRouteParamSchema, requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 
@@ -10,10 +10,18 @@ interface Context {
   params: { resource: string; id: string };
 }
 
-export async function GET(_request: Request, { params }: Context) {
+export async function GET(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-resource-detail"
+    });
     if (authResult.error) return authResult.error;
+
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
     const config = getAdminResourceConfig(params.resource);
     if (!config) {
@@ -21,7 +29,7 @@ export async function GET(_request: Request, { params }: Context) {
     }
 
     await connectToDatabase();
-    const item = await config.model.findById(params.id).lean();
+    const item = await config.model.findById(parsedId.data).lean();
 
     if (!item) {
       return Response.json({ error: "Record not found." }, { status: 404 });
@@ -35,8 +43,16 @@ export async function GET(_request: Request, { params }: Context) {
 
 export async function PATCH(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-resource-update"
+    });
     if (authResult.error) return authResult.error;
+
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
     const config = getAdminResourceConfig(params.resource);
     if (!config) {
@@ -49,7 +65,7 @@ export async function PATCH(request: Request, { params }: Context) {
     }
 
     await connectToDatabase();
-    const item = await config.model.findById(params.id);
+    const item = await config.model.findById(parsedId.data);
     if (!item) {
       return Response.json({ error: "Record not found." }, { status: 404 });
     }
@@ -82,8 +98,16 @@ export async function PATCH(request: Request, { params }: Context) {
 
 export async function DELETE(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-resource-delete"
+    });
     if (authResult.error) return authResult.error;
+
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
 
     const config = getAdminResourceConfig(params.resource);
     if (!config) {
@@ -91,13 +115,13 @@ export async function DELETE(request: Request, { params }: Context) {
     }
 
     const payload = (await request.json().catch(() => null)) as { confirmation?: string } | null;
-    const expected = `DELETE ${params.resource}:${params.id}`;
+    const expected = `DELETE ${params.resource}:${parsedId.data}`;
     if (!payload?.confirmation || payload.confirmation !== expected) {
       return Response.json({ error: `Confirmation must match "${expected}".` }, { status: 400 });
     }
 
     await connectToDatabase();
-    const item = await config.model.findById(params.id);
+    const item = await config.model.findById(parsedId.data);
     if (!item) {
       return Response.json({ error: "Record not found." }, { status: 404 });
     }
@@ -109,7 +133,7 @@ export async function DELETE(request: Request, { params }: Context) {
       actorUserId: authResult.userId,
       action: "resource.delete",
       targetModel: config.label,
-      targetId: params.id,
+      targetId: parsedId.data,
       summary: `Deleted ${config.label} record`,
       before
     });

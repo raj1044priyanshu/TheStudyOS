@@ -12,7 +12,7 @@ interface Props {
 
 export function AppProviders({ children }: Props) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <GlobalLoadingBar />
       <ErrorReporterProvider>{children}</ErrorReporterProvider>
       <CelebrationCenter />

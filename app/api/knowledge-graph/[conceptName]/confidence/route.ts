@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, requireRateLimitedUser, routeError } from "@/lib/api";
 import { ConceptNodeModel } from "@/models/ConceptNode";
 
 const schema = z.object({
@@ -10,12 +10,15 @@ const schema = z.object({
 
 export async function PATCH(request: Request, { params }: { params: { conceptName: string } }) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "graph",
+      key: "knowledge-graph-confidence"
+    });
     if (authResult.error) return authResult.error;
 
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return buildValidationErrorResponse(parsed.error);
     }
 
     await connectToDatabase();

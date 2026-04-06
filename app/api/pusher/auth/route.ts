@@ -1,6 +1,12 @@
+import { z } from "zod";
 import { NextResponse } from "next/server";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, requireRateLimitedUser, routeError } from "@/lib/api";
 import { isPusherConfigured, pusherServer } from "@/lib/pusher";
+
+const channelAuthSchema = z.object({
+  socketId: z.string().trim().min(1).max(200),
+  channelName: z.string().trim().regex(/^presence-room-[A-Z0-9]{6}$/)
+});
 
 async function parseChannelAuthorizationPayload(request: Request) {
   const formRequest = request.clone();
@@ -24,20 +30,21 @@ async function parseChannelAuthorizationPayload(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "realtimeAuth",
+      key: "pusher-auth"
+    });
     if (authResult.error) return authResult.error;
 
     if (!isPusherConfigured() || !pusherServer) {
       return NextResponse.json({ error: "Study room is unavailable until Pusher is configured." }, { status: 503 });
     }
 
-    const { socketId, channelName } = await parseChannelAuthorizationPayload(request);
-    if (!socketId || !channelName) {
-      return NextResponse.json(
-        { error: "Missing channel authorization payload. Expected socket_id and channel_name." },
-        { status: 400 }
-      );
+    const parsedPayload = channelAuthSchema.safeParse(await parseChannelAuthorizationPayload(request));
+    if (!parsedPayload.success) {
+      return buildValidationErrorResponse(parsedPayload.error);
     }
+    const { socketId, channelName } = parsedPayload.data;
 
     try {
       const auth = (pusherServer as unknown as {

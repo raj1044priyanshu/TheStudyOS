@@ -2,14 +2,17 @@ export const dynamic = "force-dynamic";
 
 import { createAdminAuditLog } from "@/lib/admin/audit";
 import { getAppSettings, mergeAppSettings, mergeWithDefaultAppSettings } from "@/lib/app-settings";
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { AppSettingsModel } from "@/models/AppSettings";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-settings"
+    });
     if (authResult.error) return authResult.error;
 
     const settings = await getAppSettings();
@@ -21,7 +24,10 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-settings-update"
+    });
     if (authResult.error) return authResult.error;
 
     const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;

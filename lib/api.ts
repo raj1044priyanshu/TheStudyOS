@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { enforceRateLimit, type RateLimitPolicy } from "@/lib/ratelimit";
 import { connectToDatabase } from "@/lib/mongodb";
 import { captureServerRouteError } from "@/lib/error-logging";
+import { getRequestIp } from "@/lib/request-meta";
 import { UserModel } from "@/models/User";
 
 export async function requireUser(options?: { allowSuspended?: boolean }) {
@@ -37,12 +39,74 @@ export async function requireAdmin() {
   return authResult;
 }
 
+export const objectIdRouteParamSchema = z.string().trim().regex(/^[a-f0-9]{24}$/i, "Invalid resource id");
+export const roomCodeRouteParamSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/, "Invalid room code");
+
+export function buildValidationErrorResponse(error: z.ZodError) {
+  return NextResponse.json({ error: error.flatten() }, { status: 400 });
+}
+
+export function createRateLimitKey(parts: Array<string | number | null | undefined | false>) {
+  return parts.filter((part): part is string | number => Boolean(part)).join(":");
+}
+
+export function createUserRateLimitKey(prefix: string, userId: string, request?: Request) {
+  const ip = request ? getRequestIp(request) : "";
+  return createRateLimitKey([prefix, userId, ip]);
+}
+
 export async function applyRouteRateLimit(identifier: string, policy: RateLimitPolicy = "default") {
   const result = await enforceRateLimit(identifier, policy);
   if (!result.success) {
-    return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+    const retryAfterSeconds = Math.max(1, Math.ceil((result.reset - Date.now()) / 1000));
+    return NextResponse.json(
+      { error: "Rate limit exceeded" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+          "X-RateLimit-Limit": String(result.limit),
+          "X-RateLimit-Remaining": String(Math.max(result.remaining, 0)),
+          "X-RateLimit-Reset": String(result.reset)
+        }
+      }
+    );
   }
   return null;
+}
+
+export async function requireRateLimitedUser(
+  request: Request,
+  options: { allowSuspended?: boolean; policy: RateLimitPolicy; key: string }
+) {
+  const authResult = await requireUser({ allowSuspended: options.allowSuspended });
+  if (authResult.error) {
+    return authResult;
+  }
+
+  const rate = await applyRouteRateLimit(createUserRateLimitKey(options.key, authResult.userId, request), options.policy);
+  if (rate) {
+    return { error: rate };
+  }
+
+  return authResult;
+}
+
+export async function requireRateLimitedAdmin(
+  request: Request,
+  options: { policy: RateLimitPolicy; key: string }
+) {
+  const authResult = await requireAdmin();
+  if (authResult.error) {
+    return authResult;
+  }
+
+  const rate = await applyRouteRateLimit(createUserRateLimitKey(options.key, authResult.userId, request), options.policy);
+  if (rate) {
+    return { error: rate };
+  }
+
+  return authResult;
 }
 
 export function parseJsonString(input: string) {

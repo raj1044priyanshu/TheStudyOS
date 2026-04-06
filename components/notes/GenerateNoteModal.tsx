@@ -224,7 +224,7 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
             <p className="text-xs uppercase tracking-[0.12em] text-[var(--tertiary-foreground)]">{form.subject}</p>
           </div>
 
-          <div className="note-surface relative overflow-hidden rounded-[20px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-5">
+          <div className="note-surface relative overflow-hidden rounded-[20px] p-5">
             {loading ? (
               <div className="space-y-2">
                 <div className="relative h-4 overflow-hidden rounded bg-slate-200/70">
@@ -236,17 +236,17 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
                 <div className="relative h-4 overflow-hidden rounded bg-slate-200/70">
                   <div className="absolute left-0 top-0 h-full w-16 animate-pen-write rounded bg-[#C4B5FD]/55 [animation-delay:0.5s]" />
                 </div>
-                <p className="text-note-secondary pt-1 text-lg">
+                <p className="note-handwritten-body text-note-secondary pt-1 text-[1.2rem]">
                   <IconPencil className="mr-1 inline h-4 w-4" />
                   Preparing {stylePreviewLabel.toLowerCase()} and study visuals...
                 </p>
               </div>
             ) : (
               <div>
-                <p className="text-note-primary font-headline text-[2rem] leading-tight tracking-[-0.03em] sm:text-[2.35rem]">
+                <p className="note-handwritten-heading text-note-primary text-[2.2rem] sm:text-[2.6rem]">
                   {form.topic || "Topic heading appears here"}
                 </p>
-                <p className="text-note-secondary mt-2 text-base leading-7 sm:text-lg">
+                <p className="note-handwritten-body text-note-secondary mt-2 text-[1.08rem] leading-8 sm:text-[1.18rem]">
                   Includes clean sections, high-contrast highlights, and bright study visuals for easier revision.
                 </p>
                 <div className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-[#FEF08A] px-2.5 py-1.5 text-xs font-medium leading-4 text-slate-800">

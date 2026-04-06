@@ -1,14 +1,17 @@
 export const dynamic = "force-dynamic";
 
 import { buildRegexSearchFilter } from "@/lib/admin/query";
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { FeedbackModel } from "@/models/Feedback";
 
 export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-feedback-list"
+    });
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();

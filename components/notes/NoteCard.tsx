@@ -20,7 +20,7 @@ export function NoteCard({ note, onDelete, onFavorite }: Props) {
   return (
     <article
       data-tour-id="note-card"
-      className="note-surface group relative mb-4 break-inside-avoid overflow-hidden rounded-[24px] bg-[linear-gradient(180deg,#ffffff_0%,#fcfdff_100%)] p-5 transition-all duration-150 hover:-translate-y-[3px] hover:shadow-[var(--panel-shadow-hover)]"
+      className="note-surface group relative mb-4 break-inside-avoid overflow-hidden rounded-[24px] p-5 transition-all duration-150 hover:-translate-y-[3px] hover:shadow-[var(--panel-shadow-hover)] sm:p-6"
     >
       <div className="relative mb-3 flex items-center justify-between">
         <span
@@ -47,11 +47,13 @@ export function NoteCard({ note, onDelete, onFavorite }: Props) {
         </button>
       </div>
 
-      <h3 className="text-note-primary mb-2 line-clamp-2 font-headline text-3xl leading-tight">{note.title}</h3>
-      <p className="text-note-secondary line-clamp-4 text-sm leading-7">
+      <h3 className="note-handwritten-heading text-note-primary mb-2 line-clamp-2 text-[2.15rem] leading-[0.95]">
+        {note.title}
+      </h3>
+      <p className="note-handwritten-body text-note-secondary line-clamp-4 text-[1.05rem] leading-8">
         {note.contentPreview.replace(/\[[^\]]+\]/g, " ")}
       </p>
-      <p className="mt-4 text-xs font-medium uppercase tracking-[0.12em] text-[var(--note-muted-foreground)]">
+      <p className="note-handwritten-meta mt-4 text-[0.78rem] uppercase text-[var(--note-muted-foreground)]">
         {format(new Date(note.createdAt), "dd MMM yyyy")}
       </p>
 

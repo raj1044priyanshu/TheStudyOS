@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, objectIdRouteParamSchema, requireRateLimitedUser, routeError } from "@/lib/api";
 import { PastPaperModel } from "@/models/PastPaper";
 import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "pastPaper",
+      key: "past-paper-practice"
+    });
     if (authResult.error) return authResult.error;
 
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
+    }
+
     await connectToDatabase();
-    const paper = await PastPaperModel.findOne({ _id: params.id, userId: authResult.userId });
+    const paper = await PastPaperModel.findOne({ _id: parsedId.data, userId: authResult.userId });
     if (!paper) {
       return NextResponse.json({ error: "Past paper not found" }, { status: 404 });
     }

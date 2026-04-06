@@ -1,11 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { IconCalendarStats, IconClockHour4, IconRepeat } from "@tabler/icons-react";
 import { HubLayout } from "@/components/layout/HubLayout";
-import { PlannerView } from "@/components/planner/PlannerView";
-import { ExamsPage } from "@/components/exams/ExamsPage";
-import { DailyBriefPanel } from "@/components/dashboard/DailyBriefPanel";
+import { HubPanelFallback } from "@/components/layout/HubPanelFallback";
+
+const PlannerView = dynamic(() => import("@/components/planner/PlannerView").then((mod) => mod.PlannerView), {
+  loading: () => <HubPanelFallback text="Loading planner..." />
+});
+const ExamsPage = dynamic(() => import("@/components/exams/ExamsPage").then((mod) => mod.ExamsPage), {
+  loading: () => <HubPanelFallback text="Loading exams..." />
+});
+const DailyBriefPanel = dynamic(() => import("@/components/dashboard/DailyBriefPanel").then((mod) => mod.DailyBriefPanel), {
+  loading: () => <HubPanelFallback text="Loading daily brief..." />
+});
 
 interface ExamRecord {
   _id: string;
@@ -54,9 +63,27 @@ export function PlanHubPage() {
       stats={stats}
       defaultTab="planner"
       tabs={[
-        { id: "planner", icon: IconCalendarStats, label: "Study Planner", component: <PlannerView /> },
-        { id: "exams", icon: IconClockHour4, label: "Exams", component: <ExamsPage /> },
-        { id: "daily-brief", icon: IconRepeat, label: "Daily Brief", component: <DailyBriefPanel /> }
+        {
+          id: "planner",
+          icon: IconCalendarStats,
+          label: "Study Planner",
+          description: "Turn your subjects, deadlines, and available time into a visible execution plan.",
+          component: <PlannerView />
+        },
+        {
+          id: "exams",
+          icon: IconClockHour4,
+          label: "Exams",
+          description: "Track dates, readiness, and the subjects that need attention first.",
+          component: <ExamsPage />
+        },
+        {
+          id: "daily-brief",
+          icon: IconRepeat,
+          label: "Daily Brief",
+          description: "See today’s plan, recent progress signals, and a calmer starting point for the day.",
+          component: <DailyBriefPanel />
+        }
       ]}
     />
   );

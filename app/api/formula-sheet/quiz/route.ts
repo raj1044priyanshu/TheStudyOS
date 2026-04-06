@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, requireRateLimitedUser, routeError } from "@/lib/api";
 import { FormulaSheetModel } from "@/models/FormulaSheet";
 import { generateStructuredDataWithFallback as generateJsonWithFallback } from "@/lib/content-service";
 import type { QuizQuestion } from "@/types";
@@ -13,12 +13,15 @@ const schema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "formulaQuiz",
+      key: "formula-quiz"
+    });
     if (authResult.error) return authResult.error;
 
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return buildValidationErrorResponse(parsed.error);
     }
 
     await connectToDatabase();

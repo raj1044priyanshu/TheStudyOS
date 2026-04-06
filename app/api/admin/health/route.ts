@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import mongoose from "mongoose";
 import { getEmailConfigDiagnostics, verifyEmailTransport } from "@/lib/email";
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getPusherClientConfig } from "@/lib/pusher-client";
 import { isPusherConfigured, pusherServer } from "@/lib/pusher";
@@ -28,9 +28,12 @@ const ENV_KEYS = [
   "NEXT_PUBLIC_PUSHER_CLUSTER"
 ];
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-health"
+    });
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();

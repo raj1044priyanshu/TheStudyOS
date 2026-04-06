@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { getAdminResourceConfig } from "@/lib/admin/resources";
 import { buildRegexSearchFilter, parsePositiveInt } from "@/lib/admin/query";
 import { createAdminAuditLog } from "@/lib/admin/audit";
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 
@@ -13,7 +13,10 @@ interface Context {
 
 export async function GET(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-resource-list"
+    });
     if (authResult.error) return authResult.error;
 
     const config = getAdminResourceConfig(params.resource);
@@ -62,7 +65,10 @@ export async function GET(request: Request, { params }: Context) {
 
 export async function POST(request: Request, { params }: Context) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminWrite",
+      key: "admin-resource-create"
+    });
     if (authResult.error) return authResult.error;
 
     const config = getAdminResourceConfig(params.resource);

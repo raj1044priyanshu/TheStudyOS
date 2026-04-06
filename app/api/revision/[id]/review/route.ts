@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, objectIdRouteParamSchema, requireRateLimitedUser, routeError } from "@/lib/api";
 import { reviewRevisionItem } from "@/lib/revision";
 import { logActivity } from "@/lib/progress";
 
@@ -11,16 +11,24 @@ const schema = z.object({
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "revisionMutation",
+      key: "revision-review"
+    });
     if (authResult.error) return authResult.error;
 
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return buildValidationErrorResponse(parsed.error);
+    }
+
+    const parsedId = objectIdRouteParamSchema.safeParse(params.id);
+    if (!parsedId.success) {
+      return buildValidationErrorResponse(parsedId.error);
     }
 
     await connectToDatabase();
-    const item = await reviewRevisionItem(params.id, authResult.userId, parsed.data.quality);
+    const item = await reviewRevisionItem(parsedId.data, authResult.userId, parsed.data.quality);
     if (!item) {
       return NextResponse.json({ error: "Revision item not found" }, { status: 404 });
     }

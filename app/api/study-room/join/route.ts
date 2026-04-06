@@ -1,28 +1,31 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, requireRateLimitedUser, routeError, roomCodeRouteParamSchema } from "@/lib/api";
 import { StudyRoomModel } from "@/models/StudyRoom";
 import { isPusherConfigured, pusherServer } from "@/lib/pusher";
 import type { StudyRoomMember } from "@/types";
 
 const schema = z.object({
-  roomCode: z.string().min(6).max(6)
+  roomCode: roomCodeRouteParamSchema
 });
 
 export async function POST(request: Request) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "studyRoomJoin",
+      key: "study-room-join"
+    });
     if (authResult.error) return authResult.error;
 
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return buildValidationErrorResponse(parsed.error);
     }
 
     await connectToDatabase();
     const room = await StudyRoomModel.findOne({
-      roomCode: parsed.data.roomCode.toUpperCase(),
+      roomCode: parsed.data.roomCode,
       isActive: true,
       expiresAt: { $gt: new Date() }
     });

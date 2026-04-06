@@ -2,7 +2,7 @@ import { z } from "zod";
 import { differenceInCalendarDays } from "date-fns";
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { requireUser, routeError } from "@/lib/api";
+import { buildValidationErrorResponse, requireRateLimitedUser, requireUser, routeError } from "@/lib/api";
 import { ExamModel } from "@/models/Exam";
 import { NoteModel } from "@/models/Note";
 import { QuizModel } from "@/models/Quiz";
@@ -65,12 +65,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const authResult = await requireUser();
+    const authResult = await requireRateLimitedUser(request, {
+      policy: "examMutation",
+      key: "exam-create"
+    });
     if (authResult.error) return authResult.error;
 
     const parsed = schema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return buildValidationErrorResponse(parsed.error);
     }
 
     const examDate = new Date(parsed.data.examDate);

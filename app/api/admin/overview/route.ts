@@ -10,7 +10,7 @@ import {
   UNRESOLVED_BUG_FEEDBACK_STATUSES,
   UNRESOLVED_ERROR_STATUSES
 } from "@/lib/admin/issues";
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { AchievementModel } from "@/models/Achievement";
@@ -22,9 +22,12 @@ import { QuizModel } from "@/models/Quiz";
 import { StudyPlanModel } from "@/models/StudyPlan";
 import { UserModel } from "@/models/User";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-overview"
+    });
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();

@@ -88,6 +88,8 @@
   --note-muted-foreground: #756675;
   --note-border: #e6d7cb;
   --note-shadow: 0 22px 48px rgba(164, 128, 102, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  --note-margin-line: rgba(224, 126, 126, 0.24);
+  --note-rule-gap: 2rem;
   --subject-tint-soft: 0.15;
   --subject-tint-strong: 0.28;
   --hero-panel: rgba(255, 245, 237, 0.94);
@@ -197,6 +199,8 @@
   --note-muted-foreground: #756675;
   --note-border: #e0d0c4;
   --note-shadow: 0 22px 48px rgba(10, 8, 12, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  --note-margin-line: rgba(222, 138, 138, 0.22);
+  --note-rule-gap: 2rem;
   --subject-tint-soft: 0.22;
   --subject-tint-strong: 0.32;
   --hero-panel: rgba(53, 38, 47, 0.92);
@@ -521,6 +525,24 @@ pre,
 
 .note-surface {
   background-color: var(--note-paper);
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 3.6rem,
+      var(--note-margin-line) 3.6rem,
+      var(--note-margin-line) 3.72rem,
+      transparent 3.72rem
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--note-rule-gap) - 1px),
+      var(--note-lines) calc(var(--note-rule-gap) - 1px),
+      var(--note-lines) var(--note-rule-gap)
+    );
+  background-position: 0 0, 0 1.2rem;
+  background-size: 100% 100%, 100% var(--note-rule-gap);
   border: 1px solid var(--note-border);
   box-shadow: var(--note-shadow);
 }
@@ -531,7 +553,24 @@ pre,
 
 .hand-drawn-paper {
   background-color: var(--note-paper);
-  background-image: none;
+  background-image:
+    linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 3.6rem,
+      var(--note-margin-line) 3.6rem,
+      var(--note-margin-line) 3.72rem,
+      transparent 3.72rem
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--note-rule-gap) - 1px),
+      var(--note-lines) calc(var(--note-rule-gap) - 1px),
+      var(--note-lines) var(--note-rule-gap)
+    );
+  background-position: 0 0, 0 1.2rem;
+  background-size: 100% 100%, 100% var(--note-rule-gap);
 }
 
 .note-font-caveat,
@@ -539,8 +578,34 @@ pre,
 .note-font-kalam,
 .note-font-patrick,
 .note-font-architect,
-.note-font-reenie {
+.note-font-reenie,
+.note-handwritten,
+.note-handwritten-heading,
+.note-handwritten-body,
+.note-handwritten-meta {
   font-family: "Caveat", var(--font-caveat), cursive;
+}
+
+.note-handwritten {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.note-handwritten-heading {
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  line-height: 1.05;
+}
+
+.note-handwritten-body {
+  font-weight: 500;
+  letter-spacing: 0.012em;
+  line-height: 1.9;
+}
+
+.note-handwritten-meta {
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 .noise {

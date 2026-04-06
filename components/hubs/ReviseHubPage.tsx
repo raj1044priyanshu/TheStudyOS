@@ -1,12 +1,26 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { IconMap, IconNetwork, IconReceipt, IconRepeat } from "@tabler/icons-react";
 import { HubLayout } from "@/components/layout/HubLayout";
-import { RevisionQueue } from "@/components/revision/RevisionQueue";
-import { FormulaSheetPage } from "@/components/formula/FormulaSheetPage";
-import { MindMapsPanel } from "@/components/revise/MindMapsPanel";
-import { KnowledgeGraphPreview } from "@/components/revise/KnowledgeGraphPreview";
+import { HubPanelFallback } from "@/components/layout/HubPanelFallback";
+
+const RevisionQueue = dynamic(() => import("@/components/revision/RevisionQueue").then((mod) => mod.RevisionQueue), {
+  loading: () => <HubPanelFallback text="Loading revision queue..." />
+});
+const FormulaSheetPage = dynamic(() => import("@/components/formula/FormulaSheetPage").then((mod) => mod.FormulaSheetPage), {
+  loading: () => <HubPanelFallback text="Loading formula sheet..." />
+});
+const MindMapsPanel = dynamic(() => import("@/components/revise/MindMapsPanel").then((mod) => mod.MindMapsPanel), {
+  loading: () => <HubPanelFallback text="Loading mind maps..." />
+});
+const KnowledgeGraphPreview = dynamic(
+  () => import("@/components/revise/KnowledgeGraphPreview").then((mod) => mod.KnowledgeGraphPreview),
+  {
+    loading: () => <HubPanelFallback text="Loading knowledge graph..." />
+  }
+);
 
 export function ReviseHubPage() {
   const [dueCount, setDueCount] = useState(0);
@@ -50,10 +64,34 @@ export function ReviseHubPage() {
       stats={stats}
       defaultTab="revision-queue"
       tabs={[
-        { id: "revision-queue", icon: IconRepeat, label: "Revision Queue", component: <RevisionQueue /> },
-        { id: "formula-sheet", icon: IconReceipt, label: "Formula Sheet", component: <FormulaSheetPage /> },
-        { id: "mind-maps", icon: IconMap, label: "Mind Maps", component: <MindMapsPanel /> },
-        { id: "knowledge-graph", icon: IconNetwork, label: "Knowledge Graph", component: <KnowledgeGraphPreview /> }
+        {
+          id: "revision-queue",
+          icon: IconRepeat,
+          label: "Revision Queue",
+          description: "See what is due today and clear recall tasks before adding more new material.",
+          component: <RevisionQueue />
+        },
+        {
+          id: "formula-sheet",
+          icon: IconReceipt,
+          label: "Formula Sheet",
+          description: "Keep formula-heavy subjects in one place for quick exam-season review.",
+          component: <FormulaSheetPage />
+        },
+        {
+          id: "mind-maps",
+          icon: IconMap,
+          label: "Mind Maps",
+          description: "Visualize one topic at a time so the chapter structure stops feeling scattered.",
+          component: <MindMapsPanel />
+        },
+        {
+          id: "knowledge-graph",
+          icon: IconNetwork,
+          label: "Knowledge Graph",
+          description: "See cross-topic concept connections and confidence trends from your stored study data.",
+          component: <KnowledgeGraphPreview />
+        }
       ]}
     />
   );

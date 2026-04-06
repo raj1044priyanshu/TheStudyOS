@@ -7,7 +7,7 @@ import {
   UNRESOLVED_ERROR_STATUSES
 } from "@/lib/admin/issues";
 import { buildAdminErrorCenterFilters, normalizeAdminErrorCenterFilters } from "@/lib/admin/error-center";
-import { requireAdmin, routeError } from "@/lib/api";
+import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
 import { AppErrorLogModel } from "@/models/AppErrorLog";
@@ -15,7 +15,10 @@ import { FeedbackModel } from "@/models/Feedback";
 
 export async function GET(request: Request) {
   try {
-    const authResult = await requireAdmin();
+    const authResult = await requireRateLimitedAdmin(request, {
+      policy: "adminRead",
+      key: "admin-errors-list"
+    });
     if (authResult.error) return authResult.error;
 
     await connectToDatabase();
