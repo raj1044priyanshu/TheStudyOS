@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         StudyPlanModel.countDocuments({}),
         AchievementModel.countDocuments({}),
         FeedbackModel.countDocuments({}),
-        FeedbackModel.countDocuments({ status: { $in: ["open", "in_review"] } }),
+        FeedbackModel.countDocuments({ status: { $in: [...UNRESOLVED_BUG_FEEDBACK_STATUSES] } }),
         AppErrorLogModel.countDocuments({}),
         AppErrorLogModel.countDocuments({ status: { $in: ["open", "acknowledged"] } }),
         FeedbackModel.find({})
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         FeedbackModel.find({ category: "bug", status: { $in: UNRESOLVED_BUG_FEEDBACK_STATUSES } })
           .sort({ updatedAt: -1, createdAt: -1 })
           .limit(8)
-          .select("message status priority pageUrl userId email updatedAt createdAt")
+          .select("title message reportType area status priority pageUrl userId email updatedAt createdAt")
           .lean()
       ]);
 

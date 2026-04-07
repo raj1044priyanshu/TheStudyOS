@@ -31,9 +31,9 @@ export default function GlobalError({
         <main className="mx-auto max-w-3xl glass-card p-8">
           <CompanionPanel
             pose="sad-but-supportive"
-            eyebrow="Global Error"
-            title="StudyOS hit a critical error."
-            description="The failure was reported to the admin dashboard. Reset the app to try again."
+            eyebrow="Something Went Wrong"
+            title="StudyOS hit a problem."
+            description="We logged the issue. Reset the app to try again."
             compact
           />
           <Button className="mt-6" onClick={() => reset()}>

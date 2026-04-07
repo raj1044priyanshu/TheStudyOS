@@ -12,7 +12,7 @@ import { scheduleRevisionItem } from "@/lib/revision";
 import { upsertConceptNode } from "@/lib/knowledge-graph";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
-import { generateNoteVisual } from "@/lib/note-visuals";
+import { generateNoteVisual, normalizeNoteVisualErrorMessage, summarizeNoteVisualErrors } from "@/lib/note-visuals";
 import type { NoteVisual } from "@/types";
 
 const createNoteSchema = z.object({
@@ -180,6 +180,7 @@ async function generateAndPersistNoteVisuals(note: {
 
   const visuals: NoteVisual[] = [];
   const failures: string[] = [];
+  const failureMessages: string[] = [];
   for (const placeholder of placeholders) {
     try {
       const visual = await generateNoteVisual({
@@ -196,6 +197,7 @@ async function generateAndPersistNoteVisuals(note: {
       }
     } catch (error) {
       failures.push(placeholder.key);
+      failureMessages.push(normalizeNoteVisualErrorMessage(error));
       console.error("Failed to generate note visual during note creation", {
         noteId: note._id.toString(),
         key: placeholder.key,
@@ -206,7 +208,7 @@ async function generateAndPersistNoteVisuals(note: {
 
   note.visuals = visuals;
   note.visualGenerationStatus = failures.length ? (visuals.length ? "partial_error" : "error") : visuals.length ? "ready" : "idle";
-  note.visualGenerationError = failures.length ? `Visual generation failed for: ${failures.join(", ")}` : "";
+  note.visualGenerationError = failures.length ? summarizeNoteVisualErrors(failureMessages, failures.length) : "";
 
   if (visuals.length > 0 || failures.length > 0) {
     await note.save();

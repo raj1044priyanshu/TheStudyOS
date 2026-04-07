@@ -30,9 +30,9 @@ export default function Error({
       <div className="mx-auto max-w-3xl glass-card p-8">
         <CompanionPanel
           pose="sad-but-supportive"
-          eyebrow="Application Error"
+          eyebrow="Something Went Wrong"
           title="Something broke on this page."
-          description="The error was logged for the admin dashboard. You can retry the page now."
+          description="We logged the issue. You can retry the page now."
           compact
         />
         <Button className="mt-6" onClick={() => reset()}>

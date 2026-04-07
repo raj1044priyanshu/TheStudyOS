@@ -3,7 +3,7 @@ import { z } from "zod";
 import { applyRouteRateLimit, requireUser } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { extractNoteDiagramPlaceholders } from "@/lib/note-content";
-import { generateNoteVisual } from "@/lib/note-visuals";
+import { generateNoteVisual, normalizeNoteVisualErrorMessage, summarizeNoteVisualErrors } from "@/lib/note-visuals";
 import { NoteModel } from "@/models/Note";
 import type { NoteVisual } from "@/types";
 
@@ -46,6 +46,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
 
   let generated = 0;
   const failures: string[] = [];
+  const failureMessages: string[] = [];
   for (const placeholder of placeholders) {
     if (requestedKeys && !requestedKeys.has(placeholder.key)) {
       continue;
@@ -69,6 +70,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
       }
     } catch (error) {
       failures.push(placeholder.key);
+      failureMessages.push(normalizeNoteVisualErrorMessage(error));
       console.error("Failed to generate note visual", {
         noteId: note._id.toString(),
         key: placeholder.key,
@@ -86,7 +88,7 @@ export async function POST(request: Request, { params }: { params: { id: string 
     generatedAt: new Date(visual.generatedAt)
   }));
   note.visualGenerationStatus = failures.length ? (orderedVisuals.length ? "partial_error" : "error") : orderedVisuals.length ? "ready" : "idle";
-  note.visualGenerationError = failures.length ? `Visual generation failed for: ${failures.join(", ")}` : "";
+  note.visualGenerationError = failures.length ? summarizeNoteVisualErrors(failureMessages, failures.length) : "";
 
   if (generated > 0 || failures.length > 0) {
     await note.save();

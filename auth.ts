@@ -196,7 +196,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user && token.id) {
         session.user.id = String(token.id);
         session.user.image = (token.picture as string | null | undefined) ?? session.user.image;
-        session.user.role = token.role as "student" | "admin" | undefined;
+        session.user.role = token.role as "student" | "tester" | "admin" | undefined;
         session.user.status = token.status as "active" | "suspended" | undefined;
       }
       return session;

@@ -23,7 +23,7 @@ interface Context {
 
 const updateSchema = z
   .object({
-    role: z.enum(["student", "admin"]).optional(),
+    role: z.enum(["student", "tester", "admin"]).optional(),
     status: z.enum(["active", "suspended"]).optional()
   })
   .refine((payload) => payload.role || payload.status, {

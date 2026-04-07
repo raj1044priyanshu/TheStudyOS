@@ -17,6 +17,7 @@ import {
 import { TrackedLink } from "@/components/analytics/TrackedLink";
 import { PublicSiteFooter } from "@/components/content/PublicSiteFooter";
 import { PublicSiteHeader } from "@/components/content/PublicSiteHeader";
+import { RotatingHeroHeadline } from "@/components/content/RotatingHeroHeadline";
 import { LandingFeedbackForm } from "@/components/feedback/LandingFeedbackForm";
 import { CompanionBadge, CompanionPanel, StudyCompanion } from "@/components/companion/StudyCompanion";
 import { StructuredData } from "@/components/seo/StructuredData";
@@ -26,6 +27,7 @@ import {
   PUBLIC_APP_SETTINGS_REVALIDATE_SECONDS,
   getCachedPublicAppSettings
 } from "@/lib/app-settings";
+import { sanitizePublicFeedbackDescription } from "@/lib/public-copy";
 import { siteConfig } from "@/lib/site-config";
 import {
   createOrganizationJsonLd,
@@ -79,9 +81,7 @@ export default async function LandingPage() {
                 <IconSparkles className="h-3.5 w-3.5 text-[#7B6CF6]" /> {settings.landing.heroEyebrow}
               </p>
               <div className="space-y-4">
-                <h1 className="max-w-3xl font-headline text-[clamp(3rem,13vw,5.8rem)] leading-[0.94] tracking-[-0.04em] text-[var(--foreground)]">
-                  {settings.landing.heroTitle}
-                </h1>
+                <RotatingHeroHeadline title={settings.landing.heroTitle} />
                 <p className="max-w-2xl text-[15px] leading-7 text-[var(--muted-foreground)] sm:text-base sm:leading-8 md:text-lg">
                   {settings.landing.heroDescription}
                 </p>
@@ -305,7 +305,7 @@ export default async function LandingPage() {
         <LandingFeedbackForm
           enabled={settings.feedbackEnabled && settings.featureToggles.feedback}
           title={settings.feedbackPromptTitle}
-          description={settings.feedbackPromptDescription}
+          description={sanitizePublicFeedbackDescription(settings.feedbackPromptDescription)}
         />
 
         <PublicSiteFooter />

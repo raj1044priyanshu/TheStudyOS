@@ -6,7 +6,7 @@ const UserSchema = new Schema(
     name: { type: String, required: true },
     image: { type: String, default: null },
     googleId: { type: String, default: null },
-    role: { type: String, enum: ["student", "admin"], default: "student", index: true },
+    role: { type: String, enum: ["student", "tester", "admin"], default: "student", index: true },
     status: { type: String, enum: ["active", "suspended"], default: "active", index: true },
     streak: { type: Number, default: 0 },
     streakLastActivityAt: { type: Date, default: null },

@@ -21,6 +21,15 @@ interface HealthPayload {
       validationStatus: string;
       validationMessage: string;
     };
+    image: {
+      source: string;
+      provider: string;
+      ready: boolean;
+      fingerprint: string;
+      imageModel: string;
+      validationStatus: string;
+      validationMessage: string;
+    };
     fallback: {
       source: string;
       provider: string;
@@ -55,6 +64,19 @@ interface AiConfigPayload {
       lastValidationMessage: string;
     };
     fallback: {
+      source: string;
+      provider: string;
+      apiBase: string;
+      apiKeyPresent: boolean;
+      keyFingerprint: string;
+      textModel: string;
+      multimodalModel: string;
+      imageModel: string;
+      lastValidatedAt: string | null;
+      lastValidationStatus: string;
+      lastValidationMessage: string;
+    };
+    image: {
       source: string;
       provider: string;
       apiBase: string;
@@ -151,6 +173,7 @@ export function AdminOps() {
   const [aiUsage, setAiUsage] = useState<AiUsagePayload | null>(null);
   const [primaryForm, setPrimaryForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
   const [fallbackForm, setFallbackForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
+  const [imageForm, setImageForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -190,6 +213,14 @@ export function AdminOps() {
         apiKey: "",
         resetToEnv: false
       });
+      setImageForm({
+        apiBase: aiConfigPayload.config.image.apiBase || "",
+        textModel: aiConfigPayload.config.image.textModel || "",
+        multimodalModel: aiConfigPayload.config.image.multimodalModel || "",
+        imageModel: aiConfigPayload.config.image.imageModel || "",
+        apiKey: "",
+        resetToEnv: false
+      });
     }
     if (aiUsageResponse.ok && aiUsagePayload) {
       setAiUsage(aiUsagePayload);
@@ -221,6 +252,10 @@ export function AdminOps() {
       apiBase: fallbackForm.apiBase,
       textModel: fallbackForm.textModel
     };
+    const imagePatch: Record<string, unknown> = {
+      apiBase: imageForm.apiBase,
+      imageModel: imageForm.imageModel
+    };
 
     if (primaryForm.apiKey.trim()) {
       primaryPatch.apiKey = primaryForm.apiKey.trim();
@@ -234,6 +269,12 @@ export function AdminOps() {
     if (fallbackForm.resetToEnv) {
       fallbackPatch.resetToEnv = true;
     }
+    if (imageForm.apiKey.trim()) {
+      imagePatch.apiKey = imageForm.apiKey.trim();
+    }
+    if (imageForm.resetToEnv) {
+      imagePatch.resetToEnv = true;
+    }
 
     setSaving(true);
     const response = await fetch("/api/admin/ai-config", {
@@ -243,7 +284,8 @@ export function AdminOps() {
       },
       body: JSON.stringify({
         primary: primaryPatch,
-        fallback: fallbackPatch
+        fallback: fallbackPatch,
+        image: imagePatch
       })
     });
 
@@ -311,7 +353,7 @@ export function AdminOps() {
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">{configStatusCopy}</p>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-3">
             <div className="surface-card rounded-[22px] p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Google primary</p>
               <p className="mt-3 text-sm text-[var(--foreground)]">Source: {aiConfig.primary.source}</p>
@@ -320,6 +362,15 @@ export function AdminOps() {
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">Image model: {aiConfig.primary.imageModel}</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">
                 Validation: {aiConfig.primary.lastValidationStatus} {aiConfig.primary.lastValidationMessage ? `• ${aiConfig.primary.lastValidationMessage}` : ""}
+              </p>
+            </div>
+            <div className="surface-card rounded-[22px] p-4">
+              <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">NVIDIA image</p>
+              <p className="mt-3 text-sm text-[var(--foreground)]">Source: {aiConfig.image.source}</p>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">Fingerprint: {aiConfig.image.keyFingerprint || "missing"}</p>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">Image model: {aiConfig.image.imageModel}</p>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                Validation: {aiConfig.image.lastValidationStatus} {aiConfig.image.lastValidationMessage ? `• ${aiConfig.image.lastValidationMessage}` : ""}
               </p>
             </div>
             <div className="surface-card rounded-[22px] p-4">
@@ -333,7 +384,7 @@ export function AdminOps() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-3">
               <h3 className="font-headline text-2xl tracking-[-0.03em] text-[var(--foreground)]">Update Google config</h3>
               <Input value={primaryForm.apiBase} onChange={(event) => setPrimaryForm((current) => ({ ...current, apiBase: event.target.value }))} placeholder="API base" />
@@ -356,6 +407,24 @@ export function AdminOps() {
             </div>
 
             <div className="space-y-3">
+              <h3 className="font-headline text-2xl tracking-[-0.03em] text-[var(--foreground)]">Update NVIDIA image config</h3>
+              <Input value={imageForm.apiBase} onChange={(event) => setImageForm((current) => ({ ...current, apiBase: event.target.value }))} placeholder="API base" />
+              <Input value={imageForm.imageModel} onChange={(event) => setImageForm((current) => ({ ...current, imageModel: event.target.value }))} placeholder="Image model" />
+              <Input value={imageForm.apiKey} onChange={(event) => setImageForm((current) => ({ ...current, apiKey: event.target.value }))} placeholder="New NVIDIA API key (optional)" />
+              <label className="flex items-center gap-3 text-sm text-[var(--foreground)]">
+                <input
+                  type="checkbox"
+                  checked={imageForm.resetToEnv}
+                  onChange={(event) => setImageForm((current) => ({ ...current, resetToEnv: event.target.checked }))}
+                />
+                Reset stored NVIDIA key and use env fallback
+              </label>
+              <p className="text-xs leading-5 text-[var(--muted-foreground)]">
+                NVIDIA hosted image endpoints are great for prototyping, but they still run with trial or credit limits. Keep an eye on recent image failures.
+              </p>
+            </div>
+
+            <div className="space-y-3">
               <h3 className="font-headline text-2xl tracking-[-0.03em] text-[var(--foreground)]">Update Groq fallback</h3>
               <Input value={fallbackForm.apiBase} onChange={(event) => setFallbackForm((current) => ({ ...current, apiBase: event.target.value }))} placeholder="API base" />
               <Input value={fallbackForm.textModel} onChange={(event) => setFallbackForm((current) => ({ ...current, textModel: event.target.value }))} placeholder="Text model" />
@@ -368,9 +437,9 @@ export function AdminOps() {
                 />
                 Reset stored fallback key and use env fallback
               </label>
-              <Button onClick={() => void saveAiConfig()}>{saving ? "Saving..." : "Save AI config"}</Button>
             </div>
           </div>
+          <Button onClick={() => void saveAiConfig()}>{saving ? "Saving..." : "Save AI config"}</Button>
         </AdminCard>
 
         <AdminCard className="space-y-4">
@@ -415,7 +484,7 @@ export function AdminOps() {
           </div>
 
           <p className="text-sm leading-6 text-[var(--muted-foreground)]">
-            Google does not expose a single fixed free-tier expiry date here. This dashboard shows app-side usage and the next daily reset window, while AI Studio remains the source of truth for current project quotas and active rate limits.
+            Google does not expose a single fixed free-tier expiry date here, and NVIDIA trial-style image access can also be rate-limited. This dashboard shows app-side usage and the next daily reset window, while provider dashboards remain the source of truth for active quotas and credits.
           </p>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -497,6 +566,12 @@ export function AdminOps() {
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Provider health</p>
           <h2 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Image-generation readiness</h2>
           <div className="mt-5 space-y-3">
+            <div className="surface-card rounded-[22px] p-4">
+              <p className="font-medium text-[var(--foreground)]">NVIDIA image generation</p>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                {health.ai.image.validationMessage || "Validation message unavailable."}
+              </p>
+            </div>
             <div className="surface-card rounded-[22px] p-4">
               <p className="font-medium text-[var(--foreground)]">Google image generation</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">

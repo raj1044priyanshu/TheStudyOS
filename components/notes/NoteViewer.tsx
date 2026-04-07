@@ -23,7 +23,8 @@ import { Button } from "@/components/ui/button";
 import { SimplifierSlider } from "@/components/notes/SimplifierSlider";
 import { cn } from "@/lib/utils";
 import { SUBJECT_COLORS } from "@/lib/constants";
-import { analyzeNoteContent, extractNoteDiagramPlaceholders, NOTE_BLOCK_TAGS, NOTE_INLINE_HIGHLIGHT_TAGS } from "@/lib/note-content";
+import { extractNoteDiagramPlaceholders, NOTE_BLOCK_TAGS, NOTE_INLINE_HIGHLIGHT_TAGS, parseNoteBlocks } from "@/lib/note-content";
+import { NOTE_VISUAL_UNAVAILABLE_MESSAGE, toUserFacingNoteVisualMessage } from "@/lib/note-visual-copy";
 import type { NoteVisual } from "@/types";
 
 interface Props {
@@ -106,12 +107,10 @@ function NoteVisualPanel({
           <div className="max-w-sm space-y-2">
             <IconPhotoPlus className={cn("mx-auto h-6 w-6 text-[#7B6CF6]", loading && "animate-pulse")} />
             <p className="text-sm font-medium text-[var(--foreground)]">
-              {loading ? "Generating a clean study visual..." : failed ? "Illustration unavailable for this note." : "Preparing illustration..."}
+              {loading ? "Generating a clean study visual..." : failed ? "This illustration is not available right now." : "Preparing illustration..."}
             </p>
             <p className="text-xs leading-5 text-[var(--muted-foreground)]">
-              {loading
-                ? "StudyOS is preparing a bright, readable educational image."
-                : "This note stays readable even when a reliable image could not be generated."}
+              {loading ? "StudyOS is preparing a bright, readable educational image." : "You can keep studying without this visual for now."}
             </p>
           </div>
         </div>
@@ -138,12 +137,11 @@ export function NoteViewer({
   const [visuals, setVisuals] = useState<NoteVisual[]>(initialVisuals);
   const [unavailableVisualKeys, setUnavailableVisualKeys] = useState<string[]>([]);
   const [visualStatus, setVisualStatus] = useState<"idle" | "loading" | "error">("idle");
-  const [visualErrorMessage, setVisualErrorMessage] = useState(visualGenerationError);
+  const [visualErrorMessage, setVisualErrorMessage] = useState(() => toUserFacingNoteVisualMessage(visualGenerationError));
   const paperRef = useRef<HTMLDivElement>(null);
   const requestedVisualKeysRef = useRef<Set<string>>(new Set());
 
-  const analysis = useMemo(() => analyzeNoteContent(content, "viewer"), [content]);
-  const parsed = analysis.blocks;
+  const parsed = useMemo(() => parseNoteBlocks(content), [content]);
   const placeholders = useMemo(() => extractNoteDiagramPlaceholders(content), [content]);
   const parsedTitle = parsed.find((item) => item.tag === "TITLE")?.value;
   const parsedSubject = parsed.find((item) => item.tag === "SUBJECT_TAG")?.value;
@@ -159,15 +157,10 @@ export function NoteViewer({
     [placeholders, visualsByKey]
   );
 
-  const noteWarningTone =
-    analysis.status === "fail"
-      ? "border-[#FCA5A5] bg-[rgba(252,165,165,0.18)] text-[#7F1D1D] dark:text-[#FECACA]"
-      : "border-[#FCD34D] bg-[rgba(252,211,77,0.18)] text-[#78350F] dark:text-[#FDE68A]";
-
   useEffect(() => {
     setVisuals(initialVisuals);
     setUnavailableVisualKeys([]);
-    setVisualErrorMessage(visualGenerationError);
+    setVisualErrorMessage(toUserFacingNoteVisualMessage(visualGenerationError));
     requestedVisualKeysRef.current = new Set(initialVisuals.map((visual) => visual.key));
   }, [initialVisuals, visualGenerationError]);
 
@@ -204,7 +197,7 @@ export function NoteViewer({
 
         if (!response.ok) {
           setUnavailableVisualKeys((prev) => Array.from(new Set([...prev, ...keysToLoad])));
-          setVisualErrorMessage(typeof data.error === "string" ? data.error : "Study visuals could not be generated right now.");
+          setVisualErrorMessage(toUserFacingNoteVisualMessage(typeof data.error === "string" ? data.error : NOTE_VISUAL_UNAVAILABLE_MESSAGE));
           setVisualStatus("error");
           return;
         }
@@ -216,18 +209,18 @@ export function NoteViewer({
           setVisuals(nextVisuals);
           if (unresolvedKeys.length > 0) {
             setUnavailableVisualKeys((prev) => Array.from(new Set([...prev, ...unresolvedKeys])));
-            setVisualErrorMessage(typeof data.error === "string" ? data.error : "Some study visuals could not be generated yet.");
+            setVisualErrorMessage(toUserFacingNoteVisualMessage(typeof data.error === "string" ? data.error : NOTE_VISUAL_UNAVAILABLE_MESSAGE));
             setVisualStatus("error");
             return;
           }
         }
-        setVisualErrorMessage(typeof data.error === "string" ? data.error : "");
+        setVisualErrorMessage(toUserFacingNoteVisualMessage(typeof data.error === "string" ? data.error : ""));
         setVisualStatus("idle");
       } catch (error) {
         if (!active) return;
         console.error("Failed to load note visuals", error);
         setUnavailableVisualKeys((prev) => Array.from(new Set([...prev, ...keysToLoad])));
-        setVisualErrorMessage("Study visuals could not be generated right now.");
+        setVisualErrorMessage(NOTE_VISUAL_UNAVAILABLE_MESSAGE);
         setVisualStatus("error");
       }
     }
@@ -302,7 +295,7 @@ export function NoteViewer({
 
       if (!response.ok) {
         setUnavailableVisualKeys(retryKeys);
-        setVisualErrorMessage(typeof data.error === "string" ? data.error : "Study visuals could not be generated right now.");
+        setVisualErrorMessage(toUserFacingNoteVisualMessage(typeof data.error === "string" ? data.error : NOTE_VISUAL_UNAVAILABLE_MESSAGE));
         setVisualStatus("error");
         return;
       }
@@ -316,7 +309,7 @@ export function NoteViewer({
       const stillMissing = retryKeys.filter((key) => !nextVisualKeys.has(key));
       if (stillMissing.length) {
         setUnavailableVisualKeys(stillMissing);
-        setVisualErrorMessage(typeof data.error === "string" ? data.error : "Some study visuals are still unavailable.");
+        setVisualErrorMessage(toUserFacingNoteVisualMessage(typeof data.error === "string" ? data.error : NOTE_VISUAL_UNAVAILABLE_MESSAGE));
         setVisualStatus("error");
         return;
       }
@@ -327,7 +320,7 @@ export function NoteViewer({
     } catch (error) {
       console.error("Failed to retry note visuals", error);
       setUnavailableVisualKeys(retryKeys);
-      setVisualErrorMessage("Study visuals could not be generated right now.");
+      setVisualErrorMessage(NOTE_VISUAL_UNAVAILABLE_MESSAGE);
       setVisualStatus("error");
     }
   }
@@ -349,19 +342,6 @@ export function NoteViewer({
           isMobile && "fixed inset-0 z-[70] overflow-y-auto bg-[linear-gradient(180deg,var(--background-strong)_0%,var(--background)_100%)] p-2 sm:p-4"
         )}
       >
-        {analysis.status !== "pass" ? (
-          <div className={cn("no-print mx-auto max-w-[960px] rounded-[24px] border px-4 py-3 text-sm leading-6 shadow-[var(--panel-shadow)]", noteWarningTone)}>
-            <p className="font-semibold">
-              {analysis.status === "fail"
-                ? "This note did not meet our quality checks and should be treated as a draft."
-                : "This note is readable, but parts of it were weakly structured."}
-            </p>
-            <p className="text-xs leading-5 opacity-90">
-              Review key facts carefully before relying on it. {analysis.issues[0] ?? "Some sections did not meet the current note validation rules."}
-            </p>
-          </div>
-        ) : null}
-
         {shouldShowVisualWarning ? (
           <div className="no-print mx-auto flex max-w-[960px] flex-col gap-3 rounded-[24px] border border-[rgba(245,158,11,0.28)] bg-[rgba(255,247,237,0.94)] px-4 py-4 text-sm text-[#92400E] shadow-[var(--panel-shadow)]">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -369,12 +349,10 @@ export function NoteViewer({
                 <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <div className="min-w-0">
                   <p className="font-semibold text-[#7C2D12]">
-                    {visualGenerationStatus === "partial_error" || visuals.length > 0
-                      ? "Some study visuals are still missing."
-                      : "Study visuals could not be generated yet."}
+                    Some study visuals are not available yet.
                   </p>
                   <p className="mt-1 text-xs leading-5 text-[#9A3412]">
-                    {visualErrorMessage || "The note is still fully usable, and you can retry the missing visuals when the image model is available again."}
+                    {visualErrorMessage || "You can keep studying now and retry the missing visuals later."}
                   </p>
                 </div>
               </div>

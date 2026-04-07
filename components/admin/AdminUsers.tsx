@@ -13,7 +13,7 @@ interface UserRow {
   _id: string;
   name: string;
   email: string;
-  role: "student" | "admin";
+  role: "student" | "tester" | "admin";
   status: "active" | "suspended";
   streak?: number;
   totalNotesGenerated?: number;
@@ -123,7 +123,7 @@ export function AdminUsers() {
       <AdminPageHeader
         eyebrow="Users"
         title="User management"
-        description="Search students, inspect their workspace activity, promote admins, and suspend accounts when needed."
+        description="Search students, inspect their workspace activity, assign tester or admin access, and suspend accounts when needed."
       />
 
       <AdminCard>
@@ -137,6 +137,7 @@ export function AdminUsers() {
           <Select value={role} onChange={(event) => setRole(event.target.value)}>
             <option value="">All roles</option>
             <option value="student">Student</option>
+            <option value="tester">Tester</option>
             <option value="admin">Admin</option>
           </Select>
         </div>
@@ -217,6 +218,7 @@ export function AdminUsers() {
                   }
                 >
                   <option value="student">Student</option>
+                  <option value="tester">Tester</option>
                   <option value="admin">Admin</option>
                 </Select>
               </label>

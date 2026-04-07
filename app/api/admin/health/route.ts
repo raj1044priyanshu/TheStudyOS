@@ -10,6 +10,7 @@ import { isPusherConfigured, pusherServer } from "@/lib/pusher";
 
 const ENV_KEYS = [
   "MONGODB_URI",
+  "AUTH_SECRET",
   "NEXTAUTH_SECRET",
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
@@ -34,6 +35,9 @@ const ENV_KEYS = [
   "CONTENT_PRIMARY_API_KEY",
   "CONTENT_FALLBACK_API_KEY",
   "CONTENT_PRIMARY_IMAGE_MODEL",
+  "NVIDIA_API_KEY",
+  "NVIDIA_API_BASE",
+  "NVIDIA_IMAGE_MODEL",
   "CLOUDINARY_CLOUD_NAME",
   "CLOUDINARY_API_KEY",
   "CLOUDINARY_API_SECRET"
@@ -109,6 +113,15 @@ export async function GET(request: Request) {
           textModel: aiConfig.fallback.textModel,
           validationStatus: aiConfig.fallback.lastValidationStatus,
           validationMessage: aiConfig.fallback.lastValidationMessage
+        },
+        image: {
+          source: aiConfig.image.source,
+          provider: aiConfig.image.provider,
+          ready: aiConfig.image.apiKeyPresent,
+          fingerprint: aiConfig.image.keyFingerprint,
+          imageModel: aiConfig.image.imageModel,
+          validationStatus: aiConfig.image.lastValidationStatus,
+          validationMessage: aiConfig.image.lastValidationMessage
         }
       },
       env: ENV_KEYS.map((key) => ({

@@ -25,6 +25,7 @@ export async function GET(request: Request) {
     const reporter = searchParams.get("reporter") ?? "";
 
     const filter: Record<string, unknown> = {
+      reportType: { $ne: "tester_bug" },
       ...buildRegexSearchFilter(["message", "name", "email", "pageUrl"], q)
     };
 

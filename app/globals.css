@@ -583,28 +583,28 @@ pre,
 .note-handwritten-heading,
 .note-handwritten-body,
 .note-handwritten-meta {
-  font-family: var(--font-handwritten), "Segoe Print", "Bradley Hand", cursive;
+  font-family: var(--font-handwritten), cursive;
 }
 
 .note-handwritten {
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0.01em;
 }
 
 .note-handwritten-heading {
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: 0.015em;
   line-height: 1.05;
 }
 
 .note-handwritten-body {
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0.012em;
   line-height: 1.9;
 }
 
 .note-handwritten-meta {
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.08em;
 }
 

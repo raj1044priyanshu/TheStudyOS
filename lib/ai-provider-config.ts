@@ -2,8 +2,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { createApiKeyFingerprint, decryptApiKey, encryptApiKey, hasAiEncryptionSecret } from "@/lib/ai-secrets";
 import { AiProviderConfigModel } from "@/models/AiProviderConfig";
 
-export type AiProviderKey = "primary" | "fallback";
-export type AiProviderKind = "google" | "groq";
+export type AiProviderKey = "primary" | "fallback" | "image";
+export type AiProviderKind = "google" | "groq" | "nvidia";
 export type AiValidationStatus = "unknown" | "valid" | "warning" | "invalid";
 
 export interface ResolvedAiProviderConfig {
@@ -44,6 +44,29 @@ export interface AiConfigPatchInput {
 
 const PRIMARY_DEFAULT_API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 const FALLBACK_DEFAULT_API_BASE = "https://api.groq.com/openai/v1";
+const IMAGE_DEFAULT_API_BASE = "https://ai.api.nvidia.com/v1/genai";
+
+function getProviderKind(key: AiProviderKey): AiProviderKind {
+  if (key === "primary") {
+    return "google";
+  }
+
+  if (key === "fallback") {
+    return "groq";
+  }
+
+  return "nvidia";
+}
+
+function buildNvidiaImageUrl(apiBase: string, model: string) {
+  const normalizedBase = apiBase.replace(/\/$/, "");
+  const normalizedModel = model
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+  return `${normalizedBase}/${normalizedModel}`;
+}
 
 function getEnvConfig(key: AiProviderKey): EnvConfigShape {
   if (key === "primary") {
@@ -58,14 +81,26 @@ function getEnvConfig(key: AiProviderKey): EnvConfigShape {
     };
   }
 
+  if (key === "fallback") {
+    return {
+      key,
+      provider: "groq",
+      apiBase: (process.env.CONTENT_FALLBACK_API_BASE || FALLBACK_DEFAULT_API_BASE).replace(/\/$/, ""),
+      apiKey: process.env.CONTENT_FALLBACK_API_KEY?.trim() || "",
+      textModel: process.env.CONTENT_FALLBACK_TEXT_MODEL || "llama-3.1-8b-instant",
+      multimodalModel: "",
+      imageModel: ""
+    };
+  }
+
   return {
     key,
-    provider: "groq",
-    apiBase: (process.env.CONTENT_FALLBACK_API_BASE || FALLBACK_DEFAULT_API_BASE).replace(/\/$/, ""),
-    apiKey: process.env.CONTENT_FALLBACK_API_KEY?.trim() || "",
-    textModel: process.env.CONTENT_FALLBACK_TEXT_MODEL || "llama-3.1-8b-instant",
+    provider: "nvidia",
+    apiBase: (process.env.NVIDIA_API_BASE || IMAGE_DEFAULT_API_BASE).replace(/\/$/, ""),
+    apiKey: process.env.NVIDIA_API_KEY?.trim() || "",
+    textModel: "",
     multimodalModel: "",
-    imageModel: ""
+    imageModel: process.env.NVIDIA_IMAGE_MODEL || "black-forest-labs/flux.1-schnell"
   };
 }
 
@@ -145,9 +180,26 @@ export async function resolveAiProviderConfig(key: AiProviderKey): Promise<Resol
     await connectToDatabase();
     const stored = await AiProviderConfigModel.findOne({ key }).lean();
 
+    if (stored?.enabled === false) {
+      return {
+        key,
+        provider: stored.provider as AiProviderKind,
+        source: "database",
+        enabled: false,
+        apiBase: (stored.apiBase || envConfig.apiBase).replace(/\/$/, ""),
+        apiKey: "",
+        keyFingerprint: stored.keyFingerprint || "",
+        textModel: stored.textModel || envConfig.textModel,
+        multimodalModel: stored.multimodalModel || envConfig.multimodalModel,
+        imageModel: stored.imageModel || envConfig.imageModel,
+        lastValidatedAt: stored.lastValidatedAt ? new Date(stored.lastValidatedAt).toISOString() : null,
+        lastValidationStatus: (stored.lastValidationStatus || "unknown") as AiValidationStatus,
+        lastValidationMessage: stored.lastValidationMessage || ""
+      };
+    }
+
     if (
       stored &&
-      stored.enabled !== false &&
       stored.apiKeyCiphertext &&
       stored.apiKeyIv &&
       stored.apiKeyTag &&
@@ -197,7 +249,11 @@ export async function resolveAiProviderConfig(key: AiProviderKey): Promise<Resol
 }
 
 export async function getAiConfigOverview() {
-  const [primary, fallback] = await Promise.all([resolveAiProviderConfig("primary"), resolveAiProviderConfig("fallback")]);
+  const [primary, fallback, image] = await Promise.all([
+    resolveAiProviderConfig("primary"),
+    resolveAiProviderConfig("fallback"),
+    resolveAiProviderConfig("image")
+  ]);
 
   return {
     encryptionReady: hasAiEncryptionSecret(),
@@ -210,13 +266,18 @@ export async function getAiConfigOverview() {
       ...fallback,
       apiKeyPresent: Boolean(fallback.apiKey),
       apiKey: undefined
+    },
+    image: {
+      ...image,
+      apiKeyPresent: Boolean(image.apiKey),
+      apiKey: undefined
     }
   };
 }
 
 export async function validateAiProviderPatch(key: AiProviderKey, patch: AiConfigPatchInput, existingApiKey?: string) {
   const envConfig = getEnvConfig(key);
-  const provider = key === "primary" ? "google" : "groq";
+  const provider = getProviderKind(key);
   const apiBase = (patch.apiBase?.trim() || envConfig.apiBase).replace(/\/$/, "");
   const apiKey = patch.resetToEnv ? envConfig.apiKey : patch.apiKey?.trim() || existingApiKey || envConfig.apiKey;
 
@@ -265,6 +326,40 @@ export async function validateAiProviderPatch(key: AiProviderKey, patch: AiConfi
       };
     }
 
+    if (provider === "nvidia") {
+      const imageModel = normalizeImageModel(patch.imageModel, envConfig.imageModel);
+      const response = await fetch(buildNvidiaImageUrl(apiBase, imageModel), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json"
+        },
+        body: JSON.stringify({
+          prompt: "StudyOS configuration validation image.",
+          samples: 1,
+          steps: 1,
+          seed: 0,
+          width: 1024,
+          height: 1024
+        }),
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => "");
+        return {
+          status: "invalid" as const,
+          message: detail || `NVIDIA image validation failed for ${imageModel}.`
+        };
+      }
+
+      return {
+        status: "valid" as const,
+        message: "NVIDIA image config validated successfully with a low-step trial request."
+      };
+    }
+
     const response = await fetch(`${apiBase}/models`, {
       headers: {
         Authorization: `Bearer ${apiKey}`
@@ -309,7 +404,7 @@ export async function upsertAiProviderConfig(key: AiProviderKey, input: AiConfig
   const validation = await validateAiProviderPatch(key, input, existingApiKey);
   const payload = buildConfigDocumentPayload(
     key,
-    key === "primary" ? "google" : "groq",
+    getProviderKind(key),
     input,
     existing,
     envConfig,

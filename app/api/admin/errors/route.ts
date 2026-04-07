@@ -6,7 +6,7 @@ import {
   UNRESOLVED_BUG_FEEDBACK_STATUSES,
   UNRESOLVED_ERROR_STATUSES
 } from "@/lib/admin/issues";
-import { buildAdminErrorCenterFilters, normalizeAdminErrorCenterFilters } from "@/lib/admin/error-center";
+import { buildAdminErrorCenterFilters, mergeMongoFilters, normalizeAdminErrorCenterFilters } from "@/lib/admin/error-center";
 import { requireRateLimitedAdmin, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { toSerializable } from "@/lib/serialize";
@@ -27,12 +27,18 @@ export async function GET(request: Request) {
     const filters = normalizeAdminErrorCenterFilters({
       q: searchParams.get("q") ?? "",
       status: searchParams.get("status") ?? "",
-      severity: searchParams.get("severity") ?? "",
+      errorSeverity: searchParams.get("errorSeverity") ?? searchParams.get("severity") ?? "",
       source: searchParams.get("source") ?? "",
       priority: searchParams.get("priority") ?? "",
-      userId: searchParams.get("userId") ?? ""
+      userId: searchParams.get("userId") ?? "",
+      reportType: searchParams.get("reportType") ?? "",
+      bugSeverity: searchParams.get("bugSeverity") ?? "",
+      area: searchParams.get("area") ?? "",
+      reproducibility: searchParams.get("reproducibility") ?? "",
+      tester: searchParams.get("tester") ?? "",
+      environment: searchParams.get("environment") ?? ""
     });
-    const { errorFilter, bugFeedbackFilter } = buildAdminErrorCenterFilters(filters);
+    const { errorFilter, bugFeedbackFilter, includeErrors, includeBugFeedback } = buildAdminErrorCenterFilters(filters);
 
     const [
       errorItems,
@@ -44,17 +50,27 @@ export async function GET(request: Request) {
       resolvedErrorCount,
       resolvedBugFeedbackCount
     ] = await Promise.all([
-      AppErrorLogModel.find(errorFilter).sort({ lastSeenAt: -1 }).limit(200).lean(),
-      FeedbackModel.find(bugFeedbackFilter)
-        .sort({ updatedAt: -1, createdAt: -1 })
-        .limit(200)
-        .lean(),
-      AppErrorLogModel.countDocuments({}),
-      FeedbackModel.countDocuments({ category: "bug" }),
-      AppErrorLogModel.countDocuments({ status: { $in: UNRESOLVED_ERROR_STATUSES } }),
-      FeedbackModel.countDocuments({ category: "bug", status: { $in: UNRESOLVED_BUG_FEEDBACK_STATUSES } }),
-      AppErrorLogModel.countDocuments({ status: RESOLVED_ERROR_STATUS }),
-      FeedbackModel.countDocuments({ category: "bug", status: RESOLVED_BUG_FEEDBACK_STATUS })
+      includeErrors ? AppErrorLogModel.find(errorFilter).sort({ lastSeenAt: -1 }).limit(200).lean() : Promise.resolve([]),
+      includeBugFeedback
+        ? FeedbackModel.find(bugFeedbackFilter)
+            .sort({ updatedAt: -1, createdAt: -1 })
+            .limit(200)
+            .lean()
+        : Promise.resolve([]),
+      includeErrors ? AppErrorLogModel.countDocuments(errorFilter) : Promise.resolve(0),
+      includeBugFeedback ? FeedbackModel.countDocuments(bugFeedbackFilter) : Promise.resolve(0),
+      includeErrors
+        ? AppErrorLogModel.countDocuments(mergeMongoFilters(errorFilter, { status: { $in: UNRESOLVED_ERROR_STATUSES } }))
+        : Promise.resolve(0),
+      includeBugFeedback
+        ? FeedbackModel.countDocuments(mergeMongoFilters(bugFeedbackFilter, { status: { $in: UNRESOLVED_BUG_FEEDBACK_STATUSES } }))
+        : Promise.resolve(0),
+      includeErrors
+        ? AppErrorLogModel.countDocuments(mergeMongoFilters(errorFilter, { status: RESOLVED_ERROR_STATUS }))
+        : Promise.resolve(0),
+      includeBugFeedback
+        ? FeedbackModel.countDocuments(mergeMongoFilters(bugFeedbackFilter, { status: RESOLVED_BUG_FEEDBACK_STATUS }))
+        : Promise.resolve(0)
     ]);
 
     return Response.json({

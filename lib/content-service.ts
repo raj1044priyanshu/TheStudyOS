@@ -1,12 +1,13 @@
 import { parseJsonArray, parseJsonString } from "@/lib/api";
 import { logAiUsageEvent } from "@/lib/ai-usage";
 import {
-  generatePrimaryImageWithMetadata,
   generatePrimaryMultimodalText,
   generatePrimaryText,
   generatePrimaryTextWithMetadata
 } from "@/lib/content-provider-primary";
+import { generateDedicatedImageWithMetadata, generateGoogleImageFallbackWithMetadata, hasGoogleImageFallback } from "@/lib/content-provider-image";
 import { generateFallbackText, generateFallbackTextWithMetadata } from "@/lib/content-provider-fallback";
+import { resolveAiProviderConfig } from "@/lib/ai-provider-config";
 
 export interface AiRequestContext {
   route?: string;
@@ -307,13 +308,14 @@ export async function generateMultimodalStructuredData<T>({
 
 export async function generateImageWithMetadata(prompt: string, systemPrompt?: string, context?: AiRequestContext) {
   const startedAt = Date.now();
+  const imageConfig = await resolveAiProviderConfig("image");
 
   try {
-    const response = await generatePrimaryImageWithMetadata(prompt, systemPrompt);
+    const response = await generateDedicatedImageWithMetadata(prompt, systemPrompt);
     await recordUsage({
       capability: "image",
       context,
-      provider: response.provider,
+      provider: response.provider || imageConfig.provider,
       model: response.model,
       promptTokens: response.usage.promptTokens,
       outputTokens: response.usage.outputTokens,
@@ -328,12 +330,50 @@ export async function generateImageWithMetadata(prompt: string, systemPrompt?: s
     await recordUsage({
       capability: "image",
       context,
-      provider: "primary",
+      provider: imageConfig.provider,
       success: false,
       latencyMs: Date.now() - startedAt,
-      errorCode: error instanceof Error ? error.message : "Primary image generation failed",
+      errorCode: error instanceof Error ? error.message : "Dedicated image generation failed",
       imageCount: 1
     });
-    throw error;
+
+    if (imageConfig.provider === "google" || !(await hasGoogleImageFallback())) {
+      throw error;
+    }
+
+    const fallbackStartedAt = Date.now();
+    try {
+      const fallback = await generateGoogleImageFallbackWithMetadata(prompt, systemPrompt);
+      await recordUsage({
+        capability: "image",
+        context,
+        provider: fallback.provider,
+        model: fallback.model,
+        promptTokens: fallback.usage.promptTokens,
+        outputTokens: fallback.usage.outputTokens,
+        totalTokens: fallback.usage.totalTokens,
+        imageCount: fallback.imageCount,
+        success: true,
+        latencyMs: Date.now() - fallbackStartedAt,
+        keyFingerprint: fallback.keyFingerprint
+      });
+      return fallback;
+    } catch (fallbackError) {
+      await recordUsage({
+        capability: "image",
+        context,
+        provider: "google",
+        success: false,
+        latencyMs: Date.now() - fallbackStartedAt,
+        errorCode: fallbackError instanceof Error ? fallbackError.message : "Google image fallback failed",
+        imageCount: 1
+      });
+
+      throw new Error(
+        `Dedicated image generation failed. ${error instanceof Error ? error.message : "Unknown error"} | Google fallback failed. ${
+          fallbackError instanceof Error ? fallbackError.message : "Unknown error"
+        }`
+      );
+    }
   }
 }

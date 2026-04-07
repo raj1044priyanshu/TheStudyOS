@@ -2,8 +2,8 @@ import { Schema, model, models } from "mongoose";
 
 const AiProviderConfigSchema = new Schema(
   {
-    key: { type: String, enum: ["primary", "fallback"], required: true, unique: true, index: true },
-    provider: { type: String, enum: ["google", "groq"], required: true },
+    key: { type: String, enum: ["primary", "fallback", "image"], required: true, unique: true, index: true },
+    provider: { type: String, enum: ["google", "groq", "nvidia"], required: true },
     enabled: { type: Boolean, default: true },
     apiBase: { type: String, default: "" },
     textModel: { type: String, default: "" },

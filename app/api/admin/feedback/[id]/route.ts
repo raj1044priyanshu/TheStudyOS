@@ -18,7 +18,7 @@ interface Context {
 
 const updateSchema = z
   .object({
-    status: z.enum(["open", "in_review", "resolved", "ignored"]).optional(),
+    status: z.enum(["open", "in_review", "needs_retest", "resolved", "ignored"]).optional(),
     priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
     labels: z.array(z.string().trim().min(1).max(50)).max(12).optional(),
     adminNotes: z.string().max(2000).optional()

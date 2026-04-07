@@ -1,7 +1,7 @@
 import type { AdminIssueSummary } from "@/types";
 
 export const UNRESOLVED_ERROR_STATUSES = ["open", "acknowledged"] as const;
-export const UNRESOLVED_BUG_FEEDBACK_STATUSES = ["open", "in_review"] as const;
+export const UNRESOLVED_BUG_FEEDBACK_STATUSES = ["open", "in_review", "needs_retest"] as const;
 export const RESOLVED_ERROR_STATUS = "resolved" as const;
 export const RESOLVED_BUG_FEEDBACK_STATUS = "resolved" as const;
 
@@ -20,10 +20,13 @@ type ErrorLogLike = {
 
 type BugFeedbackLike = {
   _id: { toString(): string } | string;
+  title?: string | null;
   message: string;
   status: string;
   priority: string;
   pageUrl?: string | null;
+  area?: string | null;
+  reportType?: string | null;
   userId?: { toString(): string } | string | null;
   email?: string | null;
   updatedAt?: Date | string | null;
@@ -61,13 +64,15 @@ export function normalizeErrorLogIssue(item: ErrorLogLike): AdminIssueSummary {
 }
 
 export function normalizeBugFeedbackIssue(item: BugFeedbackLike): AdminIssueSummary {
+  const location = item.pageUrl || item.area || (item.reportType === "tester_bug" ? "Tester bug report" : "Landing page feedback");
+
   return {
     kind: "bug_feedback",
     id: toId(item._id) ?? "",
-    title: item.message,
+    title: item.title || item.message,
     status: item.status as AdminIssueSummary["status"],
     severityOrPriority: item.priority,
-    location: item.pageUrl || "Landing page feedback",
+    location,
     userId: toId(item.userId),
     userEmail: item.email ?? "",
     updatedAt: toIsoDate(item.updatedAt ?? item.createdAt)
@@ -82,6 +87,7 @@ export function mapSharedIssueStatusToErrorStatuses(status: string) {
   switch (status) {
     case "open":
       return ["open"];
+    case "in_review":
     case "acknowledged":
       return ["acknowledged"];
     case "resolved":
@@ -97,8 +103,11 @@ export function mapSharedIssueStatusToBugFeedbackStatuses(status: string) {
   switch (status) {
     case "open":
       return ["open"];
+    case "in_review":
     case "acknowledged":
       return ["in_review"];
+    case "needs_retest":
+      return ["needs_retest"];
     case "resolved":
       return ["resolved"];
     case "ignored":

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import toast from "react-hot-toast";
 import { trackEvent } from "@/lib/analytics";
+import { sanitizePublicFeedbackDescription } from "@/lib/public-copy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -25,6 +26,7 @@ const DEFAULT_FORM = {
 export function LandingFeedbackForm({ enabled, title, description }: Props) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
+  const safeDescription = sanitizePublicFeedbackDescription(description);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -60,7 +62,7 @@ export function LandingFeedbackForm({ enabled, title, description }: Props) {
       return;
     }
 
-    toast.success("Feedback sent to the StudyOS admin dashboard.");
+    toast.success("Thanks for the feedback.");
     trackEvent("feedback_submitted", {
       source: "landing",
       category: form.category,
@@ -75,9 +77,9 @@ export function LandingFeedbackForm({ enabled, title, description }: Props) {
         <div>
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Feedback</p>
           <h2 className="mt-2 font-headline text-4xl tracking-[-0.03em] text-[var(--foreground)]">{title}</h2>
-          <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">{description}</p>
+          <p className="mt-4 text-sm leading-6 text-[var(--muted-foreground)]">{safeDescription}</p>
           <div className="surface-card mt-5 rounded-[22px] p-4 text-sm leading-6 text-[var(--muted-foreground)]">
-            Feedback goes into the admin queue with page, browser, and context details so issues can be reviewed properly.
+            Feedback includes page and device context so our team can review it properly.
           </div>
         </div>
 

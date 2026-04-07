@@ -51,7 +51,7 @@ export interface GeneratedTextResult {
 export interface GeneratedImageResult {
   data: string;
   mimeType: string;
-  provider: "primary";
+  provider: "google";
   model: string;
   captions: string[];
   keyFingerprint: string;
@@ -309,7 +309,7 @@ export async function generatePrimaryMultimodalText({
 export async function generatePrimaryImageWithMetadata(prompt: string, systemPrompt?: string): Promise<GeneratedImageResult> {
   const config = await getPrimaryConfig();
   const errors: string[] = [];
-  const models = uniqueModels([config.imageModel, "gemini-2.5-flash-image", "imagen-3.0-generate-002"]);
+  const models = uniqueModels([config.imageModel, "gemini-2.5-flash-image"]);
 
   for (const model of models) {
     try {
@@ -326,7 +326,7 @@ export async function generatePrimaryImageWithMetadata(prompt: string, systemPro
           return {
             data: imageData,
             mimeType: "image/png",
-            provider: "primary",
+            provider: "google",
             model,
             captions: [],
             keyFingerprint: config.keyFingerprint,
@@ -358,7 +358,7 @@ export async function generatePrimaryImageWithMetadata(prompt: string, systemPro
         return {
           data: image.data,
           mimeType: image.mimeType,
-          provider: "primary",
+          provider: "google",
           model,
           captions: parts.map((part) => part.text?.trim()).filter((value): value is string => Boolean(value)),
           keyFingerprint: config.keyFingerprint,

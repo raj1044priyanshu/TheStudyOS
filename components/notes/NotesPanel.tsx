@@ -45,7 +45,7 @@ export function NotesPanel() {
 
   const initialValues = useMemo(
     () => ({
-      subject: searchParams.get("subject") ?? DEFAULT_FORM.subject,
+      subject: searchParams.get("subject"),
       topic: searchParams.get("topic") ?? DEFAULT_FORM.topic,
       class: searchParams.get("class") ?? DEFAULT_FORM.class
     }),
@@ -55,11 +55,11 @@ export function NotesPanel() {
   useEffect(() => {
     setForm((current) => ({
       ...current,
-      ...initialValues
+      ...(initialValues.subject ? { subject: initialValues.subject } : {}),
+      topic: initialValues.topic,
+      class: initialValues.class
     }));
-    if (initialValues.subject) {
-      setSubjectFilter(initialValues.subject);
-    }
+    setSubjectFilter(initialValues.subject || "all");
   }, [initialValues]);
 
   async function remove(id: string) {

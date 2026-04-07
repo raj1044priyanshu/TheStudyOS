@@ -39,6 +39,19 @@ export async function requireAdmin() {
   return authResult;
 }
 
+export async function requireTester() {
+  const authResult = await requireUser();
+  if (authResult.error) {
+    return authResult;
+  }
+
+  if (authResult.user.role !== "tester") {
+    return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+
+  return authResult;
+}
+
 export const objectIdRouteParamSchema = z.string().trim().regex(/^[a-f0-9]{24}$/i, "Invalid resource id");
 export const roomCodeRouteParamSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9]{6}$/, "Invalid room code");
 
@@ -97,6 +110,23 @@ export async function requireRateLimitedAdmin(
   options: { policy: RateLimitPolicy; key: string }
 ) {
   const authResult = await requireAdmin();
+  if (authResult.error) {
+    return authResult;
+  }
+
+  const rate = await applyRouteRateLimit(createUserRateLimitKey(options.key, authResult.userId, request), options.policy);
+  if (rate) {
+    return { error: rate };
+  }
+
+  return authResult;
+}
+
+export async function requireRateLimitedTester(
+  request: Request,
+  options: { policy: RateLimitPolicy; key: string }
+) {
+  const authResult = await requireTester();
   if (authResult.error) {
     return authResult;
   }

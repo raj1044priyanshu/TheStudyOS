@@ -12,7 +12,9 @@ import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { ContextualHintsManager } from "@/components/help/ContextualHintsManager";
 import { TourManager } from "@/components/onboarding/TourManager";
 import { AuthSessionProvider } from "@/components/providers/session-provider";
+import { TesterBugReporter } from "@/components/tester/TesterBugReporter";
 import { connectToDatabase } from "@/lib/mongodb";
+import { areTesterToolsEnabled } from "@/lib/runtime-flags";
 import { getLevelFromXp, getProgressToNextLevel } from "@/lib/xp";
 import { UserModel } from "@/models/User";
 
@@ -39,6 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
   const totalXp = user?.totalXP ?? user?.xp ?? 0;
   const level = getLevelFromXp(totalXp);
+  const showTesterTools = user?.role === "tester" && areTesterToolsEnabled();
 
   return (
     <AuthSessionProvider session={session}>
@@ -65,6 +68,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
 
         <MobileNav />
+        {showTesterTools ? <TesterBugReporter /> : null}
         <TourManager />
         <Suspense fallback={null}>
           <ContextualHintsManager />

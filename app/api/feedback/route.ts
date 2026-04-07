@@ -6,6 +6,7 @@ import { getAppSettings } from "@/lib/app-settings";
 import { applyRouteRateLimit, routeError } from "@/lib/api";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getRequestIp, parseUserAgentDetails } from "@/lib/request-meta";
+import { inferRequestEnvironment } from "@/lib/tester-issues";
 import { FeedbackModel } from "@/models/Feedback";
 
 const feedbackSchema = z.object({
@@ -43,6 +44,7 @@ export async function POST(request: Request) {
 
     const created = await FeedbackModel.create({
       userId: session?.user?.id ?? null,
+      reportType: "feedback",
       source: payload.source,
       category: payload.category,
       rating: payload.rating ?? null,
@@ -57,7 +59,8 @@ export async function POST(request: Request) {
       viewport: payload.viewport,
       browser,
       os,
-      ip
+      ip,
+      environment: inferRequestEnvironment(request)
     });
 
     return Response.json({

@@ -14,7 +14,12 @@ type ErrorLike = {
 
 type BugFeedbackLike = {
   _id: { toString(): string } | string;
+  title?: string | null;
   message: string;
+  reportType?: string | null;
+  area?: string | null;
+  severity?: string | null;
+  reproducibility?: string | null;
   status: string;
   priority: string;
   pageUrl?: string | null;
@@ -141,16 +146,31 @@ function buildErrorFinding(item: ErrorLike): BugCenterAnalysisFinding {
 function buildBugFinding(item: BugFeedbackLike): BugCenterAnalysisFinding {
   const updatedAt = toIsoDate(item.updatedAt ?? item.createdAt);
   const priorityScore = BUG_PRIORITY_SCORE[item.priority] ?? 35;
-  const score = priorityScore + buildRecencyBoost(updatedAt) + (item.status === "open" ? 15 : 8);
-  const location = item.pageUrl || "Landing page feedback";
-  const reasonParts = [`${item.priority} priority`, item.status === "open" ? "awaiting review" : "currently in review"];
+  const severityBoost =
+    item.severity === "blocker"
+      ? 18
+      : item.severity === "critical"
+        ? 12
+        : item.severity === "major"
+          ? 7
+          : 3;
+  const reproducibilityBoost = item.reproducibility === "always" ? 8 : item.reproducibility === "intermittent" ? 4 : 1;
+  const score = priorityScore + severityBoost + reproducibilityBoost + buildRecencyBoost(updatedAt) + (item.status === "open" ? 15 : 8);
+  const location = item.pageUrl || item.area || (item.reportType === "tester_bug" ? "Tester bug report" : "Landing page feedback");
+  const reasonParts = [
+    item.reportType === "tester_bug" ? "tester bug" : "feedback bug",
+    `${item.priority} priority`,
+    item.severity ? `${item.severity} severity` : null,
+    item.reproducibility ? `${item.reproducibility} repro` : null,
+    item.status === "open" ? "awaiting review" : item.status === "needs_retest" ? "awaiting verification" : "currently in review"
+  ].filter(Boolean) as string[];
 
   return {
     kind: "bug_feedback",
     id: toId(item._id),
-    title: item.message,
+    title: item.title || item.message,
     status: item.status,
-    severityOrPriority: item.priority,
+    severityOrPriority: item.severity || item.priority,
     location,
     updatedAt,
     score,
@@ -252,7 +272,7 @@ export function buildBugCenterAnalysis({
     recommendedActions.push({
       urgency: "moderate",
       title: "No active issues in this scope",
-      detail: "The current filters do not contain any unresolved runtime errors or bug feedback reports."
+      detail: "The current filters do not contain any unresolved runtime errors or reported bug issues."
     });
   } else {
     if (criticalSystemIssueCount > 0) {
@@ -266,8 +286,8 @@ export function buildBugCenterAnalysis({
     if (urgentFeedbackCount > 0) {
       recommendedActions.push({
         urgency: "high",
-        title: `Review ${urgentFeedbackCount} high-priority feedback report${urgentFeedbackCount === 1 ? "" : "s"}`,
-        detail: "Users are still reporting bugs with high or urgent priority and those reports should be triaged alongside runtime failures."
+        title: `Review ${urgentFeedbackCount} high-priority reported bug${urgentFeedbackCount === 1 ? "" : "s"}`,
+        detail: "Feedback and tester bug reports are still marked high or urgent priority and should be triaged alongside runtime failures."
       });
     }
 

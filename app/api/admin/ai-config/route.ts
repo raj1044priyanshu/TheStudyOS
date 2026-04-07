@@ -19,9 +19,10 @@ const providerPatchSchema = z.object({
 const patchSchema = z
   .object({
     primary: providerPatchSchema.optional(),
-    fallback: providerPatchSchema.optional()
+    fallback: providerPatchSchema.optional(),
+    image: providerPatchSchema.optional()
   })
-  .refine((value) => value.primary || value.fallback, {
+  .refine((value) => value.primary || value.fallback || value.image, {
     message: "At least one provider patch is required."
   });
 
@@ -55,7 +56,8 @@ export async function PATCH(request: Request) {
 
     if (
       ((parsed.data.primary?.apiKey && parsed.data.primary.apiKey.trim()) ||
-        (parsed.data.fallback?.apiKey && parsed.data.fallback.apiKey.trim())) &&
+        (parsed.data.fallback?.apiKey && parsed.data.fallback.apiKey.trim()) ||
+        (parsed.data.image?.apiKey && parsed.data.image.apiKey.trim())) &&
       !hasAiEncryptionSecret()
     ) {
       return Response.json({ error: "AI_PROVIDER_ENCRYPTION_KEY is missing, so provider keys cannot be stored safely." }, { status: 400 });
@@ -72,6 +74,11 @@ export async function PATCH(request: Request) {
     if (parsed.data.fallback) {
       const result = await upsertAiProviderConfig("fallback", parsed.data.fallback, authResult.userId);
       changes.push(`Fallback provider ${result.validation.status}`);
+    }
+
+    if (parsed.data.image) {
+      const result = await upsertAiProviderConfig("image", parsed.data.image, authResult.userId);
+      changes.push(`Image provider ${result.validation.status}`);
     }
 
     const after = await getAiConfigOverview();

@@ -2,7 +2,7 @@ export const DEFAULT_APP_SETTINGS_VALUES = {
   feedbackEnabled: true,
   feedbackPromptTitle: "Tell us what should feel better.",
   feedbackPromptDescription:
-    "Share bugs, missing details, feature ideas, or rough edges from your experience. Every report goes straight into the StudyOS admin queue with context.",
+    "Share bugs, missing details, feature ideas, or rough edges from your experience. Every report goes straight to the StudyOS team with helpful context.",
   maintenanceBanner: {
     enabled: false,
     message: "Scheduled maintenance is in progress. Some features may respond more slowly than usual."

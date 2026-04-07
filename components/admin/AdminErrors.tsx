@@ -31,13 +31,27 @@ interface ErrorItem {
 
 interface BugFeedbackItem {
   _id: string;
-  status: "open" | "in_review" | "resolved" | "ignored";
+  reportType?: "feedback" | "tester_bug";
+  status: "open" | "in_review" | "needs_retest" | "resolved" | "ignored";
   priority: "low" | "medium" | "high" | "urgent";
+  title?: string;
   message: string;
+  area?: string;
+  severity?: "minor" | "major" | "critical" | "blocker" | "";
+  reproducibility?: "always" | "intermittent" | "once" | "";
   pageUrl?: string;
+  referrer?: string;
+  viewport?: string;
+  environment?: string;
+  browser?: string;
+  os?: string;
   email?: string;
   name?: string;
   userId?: string;
+  stepsToReproduce?: string;
+  expectedBehavior?: string;
+  actualBehavior?: string;
+  workaround?: string;
   updatedAt?: string;
   createdAt?: string;
   labels?: string[];
@@ -116,7 +130,11 @@ const EMPTY_SUMMARY: ErrorsPayload["summary"] = {
 };
 
 function formatAnalysisKind(kind: AnalysisFinding["kind"]) {
-  return kind === "error_log" ? "System issue" : "Feedback bug";
+  return kind === "error_log" ? "System issue" : "Reported bug";
+}
+
+function formatBugReportType(reportType?: BugFeedbackItem["reportType"]) {
+  return reportType === "tester_bug" ? "Tester bug" : "Feedback bug";
 }
 
 function urgencyClasses(urgency: AnalysisAction["urgency"]) {
@@ -133,10 +151,16 @@ function urgencyClasses(urgency: AnalysisAction["urgency"]) {
 export function AdminErrors({ initialUserId = "" }: Props) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const [severity, setSeverity] = useState("");
+  const [errorSeverity, setErrorSeverity] = useState("");
   const [source, setSource] = useState("");
   const [priority, setPriority] = useState("");
   const [userId, setUserId] = useState(initialUserId);
+  const [reportType, setReportType] = useState("");
+  const [bugSeverity, setBugSeverity] = useState("");
+  const [area, setArea] = useState("");
+  const [reproducibility, setReproducibility] = useState("");
+  const [tester, setTester] = useState("");
+  const [environment, setEnvironment] = useState("");
   const [summary, setSummary] = useState<ErrorsPayload["summary"]>(EMPTY_SUMMARY);
   const [errorItems, setErrorItems] = useState<ErrorItem[]>([]);
   const [bugFeedbackItems, setBugFeedbackItems] = useState<BugFeedbackItem[]>([]);
@@ -155,10 +179,16 @@ export function AdminErrors({ initialUserId = "" }: Props) {
   const currentFilterSignature = JSON.stringify({
     q: query,
     status,
-    severity,
+    errorSeverity,
     source,
     priority,
-    userId
+    userId,
+    reportType,
+    bugSeverity,
+    area,
+    reproducibility,
+    tester,
+    environment
   });
   const analysisIsStale = Boolean(analysis) && analysisSignature !== currentFilterSignature;
 
@@ -168,10 +198,16 @@ export function AdminErrors({ initialUserId = "" }: Props) {
       const params = new URLSearchParams();
       if (query) params.set("q", query);
       if (status) params.set("status", status);
-      if (severity) params.set("severity", severity);
+      if (errorSeverity) params.set("errorSeverity", errorSeverity);
       if (source) params.set("source", source);
       if (priority) params.set("priority", priority);
       if (userId) params.set("userId", userId);
+      if (reportType) params.set("reportType", reportType);
+      if (bugSeverity) params.set("bugSeverity", bugSeverity);
+      if (area) params.set("area", area);
+      if (reproducibility) params.set("reproducibility", reproducibility);
+      if (tester) params.set("tester", tester);
+      if (environment) params.set("environment", environment);
 
       const response = await fetch(`/api/admin/errors?${params.toString()}`, { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as ErrorsPayload | null;
@@ -184,16 +220,22 @@ export function AdminErrors({ initialUserId = "" }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [priority, query, severity, source, status, userId]);
+  }, [area, bugSeverity, environment, errorSeverity, priority, query, reproducibility, reportType, source, status, tester, userId]);
 
   const analyzeIssues = useCallback(async () => {
     const filters = {
       q: query,
       status,
-      severity,
+      errorSeverity,
       source,
       priority,
-      userId
+      userId,
+      reportType,
+      bugSeverity,
+      area,
+      reproducibility,
+      tester,
+      environment
     };
 
     setAnalyzing(true);
@@ -218,7 +260,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
     } finally {
       setAnalyzing(false);
     }
-  }, [currentFilterSignature, priority, query, severity, source, status, userId]);
+  }, [area, bugSeverity, currentFilterSignature, environment, errorSeverity, priority, query, reproducibility, reportType, source, status, tester, userId]);
 
   useEffect(() => {
     void load();
@@ -323,7 +365,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
     setSavingBug(false);
 
     if (!response.ok) {
-      toast.error(payload.error ?? "Could not update bug feedback.");
+      toast.error(payload.error ?? "Could not update the reported bug.");
       return;
     }
 
@@ -342,7 +384,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
       <AdminPageHeader
         eyebrow="Errors"
         title="Bug center"
-        description="Separate user-reported bugs from system-detected issues, then run a manual analysis pass to see what needs attention first."
+        description="Triage runtime errors, legacy feedback bugs, and tester-submitted bug reports from one issue center."
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={() => void load()} disabled={loading}>
@@ -352,36 +394,51 @@ export function AdminErrors({ initialUserId = "" }: Props) {
               {analyzing ? "Analyzing..." : "Start analysis"}
             </Button>
             <Link href="/admin/feedback">
-              <Button variant="outline">Open full feedback queue</Button>
+              <Button variant="outline">Open general feedback queue</Button>
             </Link>
           </div>
         }
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <AdminStatCard label="Tracked issues" value={summary.totalTrackedIssues} helper="Errors plus feedback reports marked as bugs." />
-        <AdminStatCard label="Unresolved" value={summary.unresolvedIssues} helper={`${summary.unresolvedErrorCount} system issues, ${summary.unresolvedBugFeedbackCount} feedback bugs.`} />
-        <AdminStatCard label="Resolved" value={summary.resolvedIssues} helper={`${summary.resolvedErrorCount} system issues, ${summary.resolvedBugFeedbackCount} feedback bugs.`} />
+        <AdminStatCard label="Tracked issues" value={summary.totalTrackedIssues} helper="System errors plus reported bugs in the current filter scope." />
+        <AdminStatCard label="Unresolved" value={summary.unresolvedIssues} helper={`${summary.unresolvedErrorCount} system issues, ${summary.unresolvedBugFeedbackCount} reported bugs.`} />
+        <AdminStatCard label="Resolved" value={summary.resolvedIssues} helper={`${summary.resolvedErrorCount} system issues, ${summary.resolvedBugFeedbackCount} reported bugs.`} />
         <AdminStatCard label="System issues" value={summary.runtimeErrorCount} helper="Grouped runtime and render failures." />
-        <AdminStatCard label="Feedback bugs" value={summary.bugFeedbackCount} helper="User feedback items whose category is bug." />
+        <AdminStatCard label="Reported bugs" value={summary.bugFeedbackCount} helper="Legacy feedback bugs plus tester-submitted bug reports." />
       </section>
 
       <AdminCard>
-        <div className="grid gap-4 xl:grid-cols-6">
-          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search messages, pages, routes, fingerprints" />
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+          <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search titles, messages, pages, routes, or fingerprints" />
+          <Select value={reportType} onChange={(event) => setReportType(event.target.value)}>
+            <option value="">All issue types</option>
+            <option value="runtime_error">System issues</option>
+            <option value="feedback_bug">Feedback bugs</option>
+            <option value="tester_bug">Tester bugs</option>
+          </Select>
           <Select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">All statuses</option>
             <option value="open">Open</option>
-            <option value="acknowledged">Acknowledged / In review</option>
+            <option value="in_review">In review</option>
+            <option value="needs_retest">Needs retest</option>
             <option value="resolved">Resolved</option>
             <option value="ignored">Ignored</option>
           </Select>
-          <Select value={severity} onChange={(event) => setSeverity(event.target.value)}>
-            <option value="">All severities</option>
+          <Input value={tester} onChange={(event) => setTester(event.target.value)} placeholder="Filter tester by name or email" />
+          <Select value={errorSeverity} onChange={(event) => setErrorSeverity(event.target.value)}>
+            <option value="">All system severities</option>
             <option value="info">Info</option>
             <option value="warning">Warning</option>
             <option value="error">Error</option>
             <option value="fatal">Fatal</option>
+          </Select>
+          <Select value={bugSeverity} onChange={(event) => setBugSeverity(event.target.value)}>
+            <option value="">All tester severities</option>
+            <option value="minor">Minor</option>
+            <option value="major">Major</option>
+            <option value="critical">Critical</option>
+            <option value="blocker">Blocker</option>
           </Select>
           <Select value={source} onChange={(event) => setSource(event.target.value)}>
             <option value="">All error sources</option>
@@ -391,11 +448,36 @@ export function AdminErrors({ initialUserId = "" }: Props) {
             <option value="unhandled_rejection">Unhandled rejection</option>
           </Select>
           <Select value={priority} onChange={(event) => setPriority(event.target.value)}>
-            <option value="">All feedback priorities</option>
+            <option value="">All bug priorities</option>
             <option value="low">Low</option>
             <option value="medium">Medium</option>
             <option value="high">High</option>
             <option value="urgent">Urgent</option>
+          </Select>
+          <Select value={area} onChange={(event) => setArea(event.target.value)}>
+            <option value="">All tester areas</option>
+            <option value="auth">Authentication</option>
+            <option value="dashboard">Dashboard</option>
+            <option value="notes">Notes</option>
+            <option value="planner">Planner</option>
+            <option value="quiz">Quiz</option>
+            <option value="doubts">Doubts</option>
+            <option value="progress">Progress</option>
+            <option value="admin">Admin</option>
+            <option value="other">Other</option>
+          </Select>
+          <Select value={reproducibility} onChange={(event) => setReproducibility(event.target.value)}>
+            <option value="">All reproducibility</option>
+            <option value="always">Always</option>
+            <option value="intermittent">Intermittent</option>
+            <option value="once">Once</option>
+          </Select>
+          <Select value={environment} onChange={(event) => setEnvironment(event.target.value)}>
+            <option value="">All environments</option>
+            <option value="local">Local</option>
+            <option value="preview">Preview</option>
+            <option value="production">Production</option>
+            <option value="development">Development</option>
           </Select>
           <Input value={userId} onChange={(event) => setUserId(event.target.value)} placeholder="Filter by userId" />
         </div>
@@ -447,9 +529,9 @@ export function AdminErrors({ initialUserId = "" }: Props) {
                 <p className="mt-2 text-sm text-[var(--muted-foreground)]">System-detected error groups in this analysis scope.</p>
               </div>
               <div className="surface-card rounded-[22px] p-4">
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Active feedback bugs</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Active reported bugs</p>
                 <p className="mt-3 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">{analysis.summary.activeFeedbackBugCount}</p>
-                <p className="mt-2 text-sm text-[var(--muted-foreground)]">User-reported bug feedback still needing review.</p>
+                <p className="mt-2 text-sm text-[var(--muted-foreground)]">Feedback and tester bug reports still needing review.</p>
               </div>
               <div className="surface-card rounded-[22px] p-4">
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">High-risk findings</p>
@@ -550,7 +632,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
       </AdminCard>
 
       {!hasIssues ? (
-        <AdminEmptyState title="No tracked issues found" description="There are no matching runtime errors or bug feedback reports for the current filters." />
+        <AdminEmptyState title="No tracked issues found" description="There are no matching runtime errors or reported bug items for the current filters." />
       ) : (
         <>
           <AdminCard className="overflow-hidden p-0">
@@ -600,8 +682,8 @@ export function AdminErrors({ initialUserId = "" }: Props) {
           <AdminCard className="overflow-hidden p-0">
             <div className="flex items-center justify-between border-b border-[color:var(--panel-border)] px-5 py-4">
               <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Feedback-reported bugs</p>
-                <h2 className="mt-1 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">User-reported bug feedback</h2>
+                <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Reported bugs</p>
+                <h2 className="mt-1 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Feedback and tester bug reports</h2>
               </div>
               <span className="text-sm text-[var(--muted-foreground)]">{bugFeedbackItems.length} matching items</span>
             </div>
@@ -610,10 +692,11 @@ export function AdminErrors({ initialUserId = "" }: Props) {
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-[color:var(--surface-low)] text-[var(--tertiary-foreground)]">
                     <tr>
-                      <th className="px-5 py-4 font-medium">Priority</th>
-                      <th className="px-5 py-4 font-medium">Message</th>
+                      <th className="px-5 py-4 font-medium">Type</th>
+                      <th className="px-5 py-4 font-medium">Severity / Priority</th>
+                      <th className="px-5 py-4 font-medium">Title</th>
                       <th className="px-5 py-4 font-medium">Reporter</th>
-                      <th className="px-5 py-4 font-medium">Page</th>
+                      <th className="px-5 py-4 font-medium">Surface</th>
                       <th className="px-5 py-4 font-medium">Status</th>
                       <th className="px-5 py-4 font-medium">Action</th>
                     </tr>
@@ -621,10 +704,16 @@ export function AdminErrors({ initialUserId = "" }: Props) {
                   <tbody>
                     {bugFeedbackItems.map((item) => (
                       <tr key={item._id} className="border-t border-[color:var(--panel-border)]">
-                        <td className="px-5 py-4 text-[var(--muted-foreground)]">{item.priority}</td>
-                        <td className="px-5 py-4 text-[var(--foreground)]">{item.message.slice(0, 140)}</td>
+                        <td className="px-5 py-4 text-[var(--muted-foreground)]">{formatBugReportType(item.reportType)}</td>
+                        <td className="px-5 py-4 text-[var(--muted-foreground)]">
+                          <div className="space-y-1">
+                            <p>{item.severity || "n/a"}</p>
+                            <p className="text-xs">{item.priority}</p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4 text-[var(--foreground)]">{(item.title || item.message).slice(0, 140)}</td>
                         <td className="px-5 py-4 text-[var(--muted-foreground)]">{item.email || item.name || "Anonymous"}</td>
-                        <td className="px-5 py-4 text-[var(--muted-foreground)]">{item.pageUrl || "Landing page"}</td>
+                        <td className="px-5 py-4 text-[var(--muted-foreground)]">{item.pageUrl || item.area || "Landing page"}</td>
                         <td className="px-5 py-4 text-[var(--muted-foreground)]">{item.status}</td>
                         <td className="px-5 py-4">
                           <Button size="sm" variant="secondary" onClick={() => setSelectedBugId(item._id)}>
@@ -637,7 +726,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
                 </table>
               </div>
             ) : (
-              <div className="px-5 py-8 text-sm text-[var(--muted-foreground)]">No feedback-reported bugs match the current filters.</div>
+              <div className="px-5 py-8 text-sm text-[var(--muted-foreground)]">No reported bugs match the current filters.</div>
             )}
           </AdminCard>
         </>
@@ -731,29 +820,37 @@ export function AdminErrors({ initialUserId = "" }: Props) {
       <Dialog
         open={Boolean(selectedBugId)}
         onClose={() => setSelectedBugId(null)}
-        title="Bug feedback detail"
-        description="Review the reported bug, update its status and priority, and keep internal notes attached to the report."
+        title="Reported bug detail"
+        description="Review the structured report, move it through triage, and keep internal notes attached to the issue."
         size="xl"
         footer={
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-[var(--muted-foreground)]">This uses the same feedback status flow as the full feedback queue.</p>
+            <p className="text-sm text-[var(--muted-foreground)]">Tester bugs can move into needs-retest before they are marked resolved.</p>
             <Button onClick={saveBugFeedback} disabled={!bugDetail || savingBug}>
-              {savingBug ? "Saving..." : "Save bug feedback"}
+              {savingBug ? "Saving..." : "Save issue"}
             </Button>
           </div>
         }
       >
         {!bugDetail ? (
-          <p className="text-sm text-[var(--muted-foreground)]">Loading bug feedback details...</p>
+          <p className="text-sm text-[var(--muted-foreground)]">Loading issue details...</p>
         ) : (
           <div className="space-y-6">
             <AdminCard className="p-4">
-              <p className="text-sm leading-7 text-[var(--foreground)]">{bugDetail.message}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[color:var(--control-bg)] px-2.5 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">
+                  {formatBugReportType(bugDetail.reportType)}
+                </span>
+                {bugDetail.severity ? <span className="text-xs text-[var(--muted-foreground)]">{bugDetail.severity}</span> : null}
+                {bugDetail.reproducibility ? <span className="text-xs text-[var(--muted-foreground)]">{bugDetail.reproducibility}</span> : null}
+                {bugDetail.environment ? <span className="text-xs text-[var(--muted-foreground)]">{bugDetail.environment}</span> : null}
+              </div>
+              <p className="mt-3 text-lg font-semibold text-[var(--foreground)]">{bugDetail.title || bugDetail.message}</p>
               <p className="mt-3 text-xs text-[var(--muted-foreground)]">{bugDetail.email || bugDetail.name || "Anonymous reporter"}</p>
-              <p className="mt-1 text-xs text-[var(--muted-foreground)]">{bugDetail.pageUrl || "Landing page"}</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">{bugDetail.pageUrl || bugDetail.area || "Landing page"}</p>
             </AdminCard>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <label className="space-y-2">
                 <span className="text-sm font-medium text-[var(--foreground)]">Status</span>
                 <Select
@@ -766,6 +863,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
                 >
                   <option value="open">Open</option>
                   <option value="in_review">In review</option>
+                  <option value="needs_retest">Needs retest</option>
                   <option value="resolved">Resolved</option>
                   <option value="ignored">Ignored</option>
                 </Select>
@@ -787,7 +885,44 @@ export function AdminErrors({ initialUserId = "" }: Props) {
                   <option value="urgent">Urgent</option>
                 </Select>
               </label>
+
+              <AdminCard className="p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Area</p>
+                <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{bugDetail.area || "Not specified"}</p>
+                <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Environment</p>
+                <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{bugDetail.environment || "Unknown"}</p>
+              </AdminCard>
             </div>
+
+            {bugDetail.stepsToReproduce ? (
+              <AdminCard className="p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Steps to reproduce</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">{bugDetail.stepsToReproduce}</p>
+              </AdminCard>
+            ) : null}
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              {bugDetail.expectedBehavior ? (
+                <AdminCard className="p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Expected behavior</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">{bugDetail.expectedBehavior}</p>
+                </AdminCard>
+              ) : null}
+
+              {bugDetail.actualBehavior ? (
+                <AdminCard className="p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Actual behavior</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">{bugDetail.actualBehavior}</p>
+                </AdminCard>
+              ) : null}
+            </div>
+
+            {bugDetail.workaround ? (
+              <AdminCard className="p-4">
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Workaround</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[var(--foreground)]">{bugDetail.workaround}</p>
+              </AdminCard>
+            ) : null}
 
             <label className="space-y-2">
               <span className="text-sm font-medium text-[var(--foreground)]">Labels</span>
@@ -806,7 +941,7 @@ export function AdminErrors({ initialUserId = "" }: Props) {
             </label>
 
             <div>
-              <p className="text-sm font-medium text-[var(--foreground)]">Raw bug feedback</p>
+              <p className="text-sm font-medium text-[var(--foreground)]">Raw issue payload</p>
               <div className="mt-3">
                 <AdminJsonBlock value={bugDetail} />
               </div>

@@ -1,12 +1,19 @@
-/* eslint-disable @next/next/no-page-custom-font */
 import { GoogleAnalytics } from "@next/third-parties/google";
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import type { CSSProperties } from "react";
 import { AppProviders } from "@/components/providers/app-providers";
 import { SiteAlertBanner } from "@/components/shared/SiteAlertBanner";
 import { buildAbsoluteUrl, getSiteUrl, shouldLoadGoogleAnalytics, siteConfig } from "@/lib/site-config";
 import "driver.js/dist/driver.css";
 import "./globals.css";
+
+const justAnotherHand = localFont({
+  src: "./fonts/JustAnotherHand-Regular.ttf",
+  variable: "--font-handwritten-local",
+  display: "swap",
+  weight: "400"
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -68,19 +75,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const analyticsEnabled = shouldLoadGoogleAnalytics();
 
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Just+Another+Hand&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" suppressHydrationWarning className={justAnotherHand.variable}>
       <body
         style={
           {
             "--font-heading": '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
             "--font-body":
               '"Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-            "--font-handwritten": '"Just Another Hand", "Segoe Print", "Bradley Hand", cursive',
+            "--font-handwritten": 'var(--font-handwritten-local), "Segoe Print", "Bradley Hand", cursive',
             "--font-caveat": '"Segoe Print", "Bradley Hand", cursive',
             "--font-mono": '"SFMono-Regular", "JetBrains Mono", ui-monospace, Menlo, Monaco, Consolas, monospace'
           } as CSSProperties

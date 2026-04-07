@@ -1,5 +1,7 @@
 import { generateImageWithMetadata } from "@/lib/content-service";
 import { uploadNoteVisualImage } from "@/lib/cloudinary";
+import { NOTE_VISUAL_UNAVAILABLE_MESSAGE } from "@/lib/note-visual-copy";
+import { renderDeterministicNoteVisual, shouldUseDeterministicNoteVisual } from "@/lib/note-visual-renderer";
 import type { NoteVisual } from "@/types";
 
 const NOTE_VISUAL_SYSTEM_PROMPT = `You create clean educational visuals for student study notes.
@@ -48,6 +50,29 @@ export async function generateNoteVisual({
   description: string;
   userId?: string;
 }): Promise<NoteVisual | null> {
+  if (shouldUseDeterministicNoteVisual(description)) {
+    const rendered = renderDeterministicNoteVisual({
+      subject,
+      title,
+      description
+    });
+    const uploaded = await uploadNoteVisualImage({
+      base64Data: rendered.data,
+      mimeType: rendered.mimeType,
+      noteId,
+      key
+    });
+
+    return {
+      key,
+      description,
+      imageUrl: uploaded.secure_url,
+      provider: rendered.provider,
+      model: rendered.model,
+      generatedAt: new Date().toISOString()
+    };
+  }
+
   const generated = await generateImageWithMetadata(buildNoteVisualPrompt({ subject, title, description }), NOTE_VISUAL_SYSTEM_PROMPT, {
     route: "notes:visuals",
     userId,
@@ -74,4 +99,17 @@ export async function generateNoteVisual({
     model: generated.model,
     generatedAt: new Date().toISOString()
   };
+}
+
+export function normalizeNoteVisualErrorMessage(error: unknown) {
+  void error;
+  return NOTE_VISUAL_UNAVAILABLE_MESSAGE;
+}
+
+export function summarizeNoteVisualErrors(messages: string[], failureCount: number) {
+  const uniqueMessages = Array.from(new Set(messages.filter(Boolean)));
+  const primaryMessage = uniqueMessages[0] || NOTE_VISUAL_UNAVAILABLE_MESSAGE;
+
+  void failureCount;
+  return primaryMessage;
 }
