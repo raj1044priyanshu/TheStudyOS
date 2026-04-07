@@ -116,13 +116,23 @@ export function RotatingHeroHeadline({ title }: { title: string }) {
             minWidth: `${maxAnimatedLength + 0.35}ch`
           }}
         >
-          <span className="inline-block bg-gradient-to-r from-[#7B6CF6] via-[#8B4F48] to-[#7B6CF6] bg-clip-text text-transparent">
+          <span
+            className="inline-block bg-clip-text text-transparent"
+            style={{
+              backgroundImage:
+                "linear-gradient(120deg, var(--brand-700) 0%, var(--brand-500) 56%, var(--butter-500) 100%)"
+            }}
+          >
             {visibleWord || "\u00A0"}
           </span>
           {!prefersReducedMotion ? (
             <span
-              className="ml-[0.04em] inline-block h-[0.82em] w-[0.08em] rounded-full bg-[#8B4F48] opacity-80 animate-pulse"
-              style={{ transform: "translateY(0.08em)" }}
+              className="ml-[0.04em] inline-block h-[0.82em] w-[0.08em] rounded-full opacity-80 animate-pulse"
+              style={{
+                transform: "translateY(0.08em)",
+                backgroundColor: "var(--brand-600)",
+                boxShadow: "0 0 18px color-mix(in srgb, var(--brand-500) 35%, transparent)"
+              }}
             />
           ) : null}
         </span>

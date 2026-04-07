@@ -13,7 +13,7 @@ interface Props {
 
 export function AppProviders({ children }: Props) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem storageKey="studyos-theme" disableTransitionOnChange>
       <Suspense fallback={null}>
         <GlobalLoadingBar />
       </Suspense>

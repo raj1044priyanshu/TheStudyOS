@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { queueCelebrationsFromAchievementResponse } from "@/lib/client-celebrations";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { resolvePlannerTemplateSubjects } from "@/lib/planner-templates";
 import {
   ONBOARDING_BOARD_OPTIONS,
@@ -18,7 +17,6 @@ import {
 } from "@/lib/study-flow";
 import { normalizeTopicList, toDateInput } from "@/lib/planner-utils";
 import type {
-  PlannerConfirmedExamInput,
   PlannerGenerationInput,
   PlannerPrefillSource,
   StudyProfile,
@@ -56,17 +54,11 @@ interface PrefillMeta {
   summary: string;
 }
 
-function joinTopics(topics: string[]) {
-  return normalizeTopicList(topics).join("\n");
-}
-
-function splitTopics(text: string) {
-  return normalizeTopicList(
-    text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean)
-  );
+interface ManualPlanSubject {
+  id: string;
+  subject: string;
+  examDate: string;
+  importance: number;
 }
 
 function normalizePrefillSource(value: string): PlannerPrefillSource | "" {
@@ -81,6 +73,56 @@ function normalizePrefillSource(value: string): PlannerPrefillSource | "" {
   return "";
 }
 
+function createManualPlanSubject(subject = "", examDate = "", importance = 3): ManualPlanSubject {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    subject,
+    examDate,
+    importance
+  };
+}
+
+function buildManualPlanSubjectsFromExams(exams: ExamRecord[]) {
+  const deduped = new Map<string, { subject: string; examDate: string }>();
+  const ordered = [...exams].sort((left, right) => new Date(left.examDate).getTime() - new Date(right.examDate).getTime());
+
+  for (const exam of ordered) {
+    const key = exam.subject.trim().toLowerCase();
+    if (!key || deduped.has(key)) {
+      continue;
+    }
+
+    deduped.set(key, {
+      subject: exam.subject,
+      examDate: toDateInput(exam.examDate)
+    });
+  }
+
+  return Array.from(deduped.values()).map((item, index) =>
+    createManualPlanSubject(item.subject, item.examDate, Math.max(1, 5 - index))
+  );
+}
+
+function buildManualPlanSubjectsFromTemplates(subjects: string[], exams: ExamRecord[]) {
+  const examBySubject = new Map<string, string>();
+
+  exams
+    .filter((exam) => !exam.isPast)
+    .sort((left, right) => new Date(left.examDate).getTime() - new Date(right.examDate).getTime())
+    .forEach((exam) => {
+      const key = exam.subject.trim().toLowerCase();
+      if (!key || examBySubject.has(key)) {
+        return;
+      }
+
+      examBySubject.set(key, toDateInput(exam.examDate));
+    });
+
+  return subjects.map((subject, index) =>
+    createManualPlanSubject(subject, examBySubject.get(subject.trim().toLowerCase()) ?? "", Math.max(1, 5 - index))
+  );
+}
+
 export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -89,7 +131,6 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
   const appliedPrefillRef = useRef<string | null>(null);
   const [booting, setBooting] = useState(true);
   const [savingContext, setSavingContext] = useState(false);
-  const [extracting, setExtracting] = useState(false);
   const [prefillMeta, setPrefillMeta] = useState<PrefillMeta | null>(null);
   const [setupNotes, setSetupNotes] = useState<string[]>([]);
   const [focusTopicInput, setFocusTopicInput] = useState("");
@@ -101,7 +142,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
   const [profileSubjects, setProfileSubjects] = useState<string[]>([]);
   const [selectedExamIds, setSelectedExamIds] = useState<string[]>([]);
   const [existingExams, setExistingExams] = useState<ExamRecord[]>([]);
-  const [confirmedExams, setConfirmedExams] = useState<PlannerConfirmedExamInput[]>([]);
+  const [manualSubjects, setManualSubjects] = useState<ManualPlanSubject[]>([]);
   const [context, setContext] = useState<{
     className: string;
     board: string;
@@ -126,7 +167,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
     });
   }, [context.stream, profileSubjects, requiresStream]);
   const hasValidExamYear = Number.isInteger(examYear) && examYear >= 2000 && examYear <= 2100;
-  const canPreparePrefill = Boolean(
+  const canLoadManualSubjects = Boolean(
     context.className &&
       context.board &&
       (!requiresStream || context.stream) &&
@@ -178,16 +219,16 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
   }, [loadInitialData]);
 
   useEffect(() => {
-    if (!confirmedExams.length || planName.trim()) {
+    if (!manualSubjects.length || planName.trim()) {
       return;
     }
 
     setPlanName(
-      confirmedExams.length === 1
-        ? `${confirmedExams[0].subject} Study Plan`
-        : `${confirmedExams[0].subject} + ${confirmedExams.length - 1} more exams`
+      manualSubjects.length === 1
+        ? `${manualSubjects[0].subject} Study Plan`
+        : `${manualSubjects[0].subject} + ${manualSubjects.length - 1} more subjects`
     );
-  }, [confirmedExams, planName]);
+  }, [manualSubjects, planName]);
 
   useEffect(() => {
     if (booting) {
@@ -213,10 +254,11 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
     appliedPrefillRef.current = signature;
 
     if (prefill === "upcoming-exams") {
-      const allIds = upcomingExams.map((exam) => exam._id);
+      const selectedExams = upcomingExams;
+      const allIds = selectedExams.map((exam) => exam._id);
       setSelectedExamIds(allIds);
-      setConfirmedExams([]);
-      setSetupNotes([]);
+      setManualSubjects(buildManualPlanSubjectsFromExams(selectedExams));
+      setSetupNotes(["Selected exams were loaded into the manual builder. Edit the dates or priorities if you want."]);
       setPrefillMeta({
         source: "upcoming-exams",
         summary: `Prefill selected ${allIds.length} upcoming exam${allIds.length === 1 ? "" : "s"} from your saved countdowns.`
@@ -224,8 +266,8 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
     } else if (prefill === "exam" && examId) {
       const selected = existingExams.find((exam) => exam._id === examId);
       setSelectedExamIds(selected ? [selected._id] : []);
-      setConfirmedExams([]);
-      setSetupNotes([]);
+      setManualSubjects(selected ? buildManualPlanSubjectsFromExams([selected]) : []);
+      setSetupNotes(selected ? ["The selected exam was loaded into the manual builder."] : []);
       setPrefillMeta({
         source: "exam",
         summary: selected
@@ -233,10 +275,14 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
           : "The selected exam could not be found, so choose an exam manually."
       });
     } else if (prefill === "autopsy") {
-      const matchingExams = existingExams.filter((exam) => exam.subject === subject && !exam.isPast).map((exam) => exam._id);
-      setSelectedExamIds(matchingExams);
-      setConfirmedExams([]);
-      setSetupNotes([]);
+      const matchingExams = existingExams.filter((exam) => exam.subject === subject && !exam.isPast);
+      setSelectedExamIds(matchingExams.map((exam) => exam._id));
+      setManualSubjects(buildManualPlanSubjectsFromExams(matchingExams));
+      setSetupNotes(
+        matchingExams.length
+          ? ["Matched exams were loaded into the manual builder. Adjust the dates or priorities as needed."]
+          : []
+      );
       const topics = [topic, ...weakTopics.split(",")].filter(Boolean);
       setFocusTopics(normalizeTopicList(topics));
       setPrefillMeta({
@@ -248,8 +294,12 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
     } else if (prefill === "manual") {
       const matchingExams = existingExams.filter((exam) => !exam.isPast && (!subject || exam.subject === subject));
       setSelectedExamIds(matchingExams.map((exam) => exam._id));
-      setConfirmedExams([]);
-      setSetupNotes([]);
+      setManualSubjects(buildManualPlanSubjectsFromExams(matchingExams));
+      setSetupNotes(
+        matchingExams.length
+          ? ["Matched exams were loaded into the manual builder with your focus topics."]
+          : ["Your focus topics were imported. Add subjects and dates manually to generate the plan."]
+      );
       setFocusTopics(normalizeTopicList([topic, ...weakTopics.split(",")].filter(Boolean)));
       setPrefillMeta({
         source: "manual",
@@ -263,7 +313,6 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
   }, [booting, clearPrefillParamsFromUrl, existingExams, searchParams, upcomingExams]);
 
   function toggleExamSelection(examId: string) {
-    setConfirmedExams([]);
     setSetupNotes([]);
     setSelectedExamIds((previous) => (previous.includes(examId) ? previous.filter((item) => item !== examId) : [...previous, examId]));
   }
@@ -304,78 +353,79 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
     }
   }
 
-  async function prepareConfirmedExams() {
-    if (!canPreparePrefill) {
-      toast.error(
-        usesSavedExamSelection
-          ? "Select your study context and at least one exam first."
-          : "Select your study context and a valid exam year first."
-      );
+  function loadSelectedExamsIntoManualBuilder() {
+    const selected = upcomingExams.filter((exam) => selectedExamIds.includes(exam._id));
+    if (!selected.length) {
+      toast.error("Select at least one exam first.");
       return;
     }
 
-    setExtracting(true);
-    try {
-      await saveStudyContext();
-
-      const response = await fetch("/api/planner/prefill/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          usesSavedExamSelection
-            ? {
-                className: context.className,
-                board: context.board,
-                stream: context.stream,
-                examIds: selectedExamIds
-              }
-            : {
-                className: context.className,
-                board: context.board,
-                stream: context.stream,
-                examYear
-              }
-        )
+    const nextSubjects = buildManualPlanSubjectsFromExams(selected);
+    setManualSubjects(nextSubjects);
+    setSetupNotes(["Selected exams were loaded into the manual builder. You can still edit every date and priority."]);
+    if (!prefillMeta) {
+      setPrefillMeta({
+        source: "manual",
+        summary: `Loaded ${nextSubjects.length} subject${nextSubjects.length === 1 ? "" : "s"} from your saved exams.`
       });
-      const data = (await response.json().catch(() => ({}))) as {
-        confirmedExams?: PlannerConfirmedExamInput[];
-        notes?: string[];
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not prepare exam details");
-      }
-
-      setConfirmedExams(data.confirmedExams ?? []);
-      setSetupNotes(data.notes ?? []);
-      if (!prefillMeta) {
-        setPrefillMeta({
-          source: "prefill",
-          summary: usesSavedExamSelection
-            ? "Exam details loaded. Confirm the dates and chapters, then generate the chapter plan."
-            : `StudyOS built editable exam cards for ${autoTemplateSubjects.length} subject${autoTemplateSubjects.length === 1 ? "" : "s"} in the ${examYear} exam cycle.`
-        });
-      }
-      toast.success("Exam details loaded for confirmation");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not prepare exam details");
-    } finally {
-      setExtracting(false);
     }
+    toast.success("Selected exams loaded");
+  }
+
+  function loadSuggestedSubjectsIntoManualBuilder() {
+    if (!autoTemplateSubjects.length) {
+      toast.error("No subjects were available to load.");
+      return;
+    }
+
+    const nextSubjects = buildManualPlanSubjectsFromTemplates(autoTemplateSubjects, existingExams);
+    setManualSubjects(nextSubjects);
+    setSetupNotes(["Suggested subjects were added. Fill in or adjust the exam dates and priorities manually before generating the plan."]);
+    if (!prefillMeta) {
+      setPrefillMeta({
+        source: "manual",
+        summary: `Loaded ${nextSubjects.length} suggested subject${nextSubjects.length === 1 ? "" : "s"} for manual planning.`
+      });
+    }
+    toast.success("Suggested subjects loaded");
+  }
+
+  function addManualSubject() {
+    setManualSubjects((previous) => [...previous, createManualPlanSubject("", "", 3)]);
+  }
+
+  function updateManualSubject(id: string, updates: Partial<Omit<ManualPlanSubject, "id">>) {
+    setManualSubjects((previous) => previous.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+  }
+
+  function removeManualSubject(id: string) {
+    setManualSubjects((previous) => previous.filter((item) => item.id !== id));
   }
 
   async function createPlan() {
-    if (!confirmedExams.length) {
-      toast.error("Confirm at least one exam before generating the plan.");
+    if (!manualSubjects.length) {
+      toast.error("Add at least one subject before generating the plan.");
       return;
     }
 
-    const invalidExam = confirmedExams.find(
-      (exam) => !exam.subject.trim() || !exam.examName.trim() || !exam.examDate.trim() || normalizeTopicList(exam.chapters).length === 0
+    const normalizedSubjects = manualSubjects.map((item) => ({
+      name: item.subject.trim(),
+      examDate: item.examDate.trim(),
+      importance: Math.max(1, Math.min(5, Math.round(item.importance)))
+    }));
+
+    const invalidSubject = normalizedSubjects.find(
+      (item) => !item.name || !item.examDate || !Number.isFinite(item.importance) || item.importance < 1 || item.importance > 5
     );
-    if (invalidExam) {
-      toast.error(`Complete the date and chapter list for ${invalidExam.subject || invalidExam.examName || "every exam"} first.`);
+    if (invalidSubject) {
+      toast.error(`Complete the subject, exam date, and priority for ${invalidSubject.name || "every row"} first.`);
+      return;
+    }
+
+    try {
+      await saveStudyContext();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save your study context");
       return;
     }
 
@@ -384,7 +434,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
       hoursPerDay,
       startDate,
       focusTopics,
-      prefillSource: prefillMeta?.source ?? "prefill",
+      prefillSource: prefillMeta?.source ?? "manual",
       studyContext: {
         className: context.className,
         board: context.board,
@@ -393,10 +443,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
         startDate,
         examYear
       },
-      confirmedExams: confirmedExams.map((exam) => ({
-        ...exam,
-        chapters: normalizeTopicList(exam.chapters)
-      }))
+      subjects: normalizedSubjects
     };
 
     const data = await onGenerate(payload);
@@ -407,7 +454,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
 
     toast.success("Plan generated");
     trackEvent("study_plan_created", {
-      examCount: payload.confirmedExams?.length ?? 0,
+      examCount: payload.subjects?.length ?? 0,
       focusTopicCount: payload.focusTopics?.length ?? 0,
       hoursPerDay: payload.hoursPerDay
     });
@@ -427,10 +474,10 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
         </p>
         <div className="mb-5">
           <h3 className="font-headline text-[clamp(2rem,5vw,2.8rem)] tracking-[-0.03em] text-[var(--foreground)]">
-            Build a chapter plan
+            Build a study plan
           </h3>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted-foreground)]">
-            Tell StudyOS your board, class, stream, and exam year. We&apos;ll build editable exam cards, ask you to confirm every date and chapter, then generate a gated chapter-by-chapter schedule.
+            Tell StudyOS your board, class, stream, and exam year, then add subjects, dates, and priorities manually. StudyOS will turn that into a clean daily plan without the extra syllabus confirmation step.
           </p>
         </div>
 
@@ -521,8 +568,8 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
                     size="sm"
                     onClick={() => {
                       setSelectedExamIds(upcomingExams.map((exam) => exam._id));
-                      setConfirmedExams([]);
-                      setSetupNotes([]);
+                      setManualSubjects(buildManualPlanSubjectsFromExams(upcomingExams));
+                      setSetupNotes(["Upcoming exams were loaded into the manual builder."]);
                       setPrefillMeta({
                         source: "upcoming-exams",
                         summary: `Prefill selected ${upcomingExams.length} upcoming exam${upcomingExams.length === 1 ? "" : "s"} from your saved countdowns.`
@@ -563,7 +610,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
                 <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Step 2</p>
                 <h4 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Choose exam year</h4>
                 <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-                  StudyOS will generate editable exam cards for your full subject set, then you can confirm every date and chapter before creating the plan.
+                  StudyOS will suggest subjects for this exam cycle, and you can fill in the dates and priorities manually before generating the plan.
                 </p>
                 <div className="mt-4 grid gap-3 md:grid-cols-[220px_1fr]">
                   <div>
@@ -577,7 +624,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-[var(--foreground)]">Subjects to extract</label>
+                    <label className="mb-1 block text-sm font-medium text-[var(--foreground)]">Suggested subjects</label>
                     {autoTemplateSubjects.length ? (
                       <div className="flex flex-wrap gap-2">
                         {autoTemplateSubjects.map((subject) => (
@@ -602,42 +649,27 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
           <div className="space-y-4">
             <div className="surface-card rounded-[24px] p-4">
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Step 3</p>
-              <h4 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Confirm syllabus and dates</h4>
+              <h4 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Build it manually</h4>
               <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-                StudyOS will try to enrich your exams, but you should confirm every date and chapter before we build the final plan.
+                Load your selected exams or suggested subjects, then edit the subject names, exam dates, and priorities yourself. No syllabus confirmation is required.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Button type="button" onClick={() => void prepareConfirmedExams()} disabled={!canPreparePrefill || extracting || savingContext}>
-                  {extracting || savingContext ? "Loading details..." : "Fetch and confirm"}
-                </Button>
                 {usesSavedExamSelection ? (
                   <Button
                     type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      const selected = upcomingExams.filter((exam) => selectedExamIds.includes(exam._id));
-                      setConfirmedExams(
-                        selected.map((exam) => ({
-                          examId: exam._id,
-                          subject: exam.subject,
-                          examName: exam.examName,
-                          examDate: toDateInput(exam.examDate),
-                          board: exam.board ?? context.board,
-                          chapters: normalizeTopicList(exam.syllabus ?? []),
-                          source: exam.syllabus?.length ? "saved" : "manual"
-                        }))
-                      );
-                      setSetupNotes(["Manual mode active. Add or edit chapters before generating the plan."]);
-                      setPrefillMeta({
-                        source: "manual",
-                        summary: "Manual confirmation mode is active. Review every exam date and chapter list before generating the plan."
-                      });
-                    }}
-                    disabled={!selectedExamIds.length}
+                    onClick={loadSelectedExamsIntoManualBuilder}
+                    disabled={!canLoadManualSubjects || savingContext}
                   >
-                    Manual fallback
+                    {savingContext ? "Saving context..." : "Use selected exams"}
                   </Button>
-                ) : null}
+                ) : (
+                  <Button type="button" onClick={loadSuggestedSubjectsIntoManualBuilder} disabled={!canLoadManualSubjects || savingContext}>
+                    {savingContext ? "Saving context..." : "Use suggested subjects"}
+                  </Button>
+                )}
+                <Button type="button" variant="outline" onClick={addManualSubject}>
+                  Add subject manually
+                </Button>
               </div>
             </div>
 
@@ -653,7 +685,7 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
           </div>
         </div>
 
-        {confirmedExams.length ? (
+        {manualSubjects.length ? (
           <div className="mt-5 space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
               <div>
@@ -696,69 +728,33 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
-              {confirmedExams.map((exam, index) => (
-                <div key={`${exam.subject}-${exam.examName}-${index}`} className="surface-card rounded-[24px] p-4">
+              {manualSubjects.map((subject) => (
+                <div key={subject.id} className="surface-card rounded-[24px] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">{exam.source}</p>
-                    {exam.officialExamDate ? (
-                      <span className="surface-pill rounded-full px-3 py-1 text-xs text-[var(--muted-foreground)]">
-                        official date {exam.officialExamDate}
-                      </span>
-                    ) : null}
+                    <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Manual subject</p>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeManualSubject(subject.id)}>
+                      Remove
+                    </Button>
                   </div>
-                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="mt-3 grid gap-3 md:grid-cols-3">
                     <Input
-                      value={exam.subject}
-                      onChange={(event) =>
-                        setConfirmedExams((previous) =>
-                          previous.map((item, itemIndex) => (itemIndex === index ? { ...item, subject: event.target.value } : item))
-                        )
-                      }
+                      value={subject.subject}
+                      onChange={(event) => updateManualSubject(subject.id, { subject: event.target.value })}
                       placeholder="Subject"
                     />
                     <Input
-                      value={exam.examName}
-                      onChange={(event) =>
-                        setConfirmedExams((previous) =>
-                          previous.map((item, itemIndex) => (itemIndex === index ? { ...item, examName: event.target.value } : item))
-                        )
-                      }
-                      placeholder="Exam name"
-                    />
-                    <Input
                       type="date"
-                      value={exam.examDate}
-                      onChange={(event) =>
-                        setConfirmedExams((previous) =>
-                          previous.map((item, itemIndex) => (itemIndex === index ? { ...item, examDate: event.target.value } : item))
-                        )
-                      }
+                      value={subject.examDate}
+                      onChange={(event) => updateManualSubject(subject.id, { examDate: event.target.value })}
                     />
                     <Input
-                      value={exam.board ?? ""}
-                      onChange={(event) =>
-                        setConfirmedExams((previous) =>
-                          previous.map((item, itemIndex) => (itemIndex === index ? { ...item, board: event.target.value } : item))
-                        )
-                      }
-                      placeholder="Board"
+                      type="number"
+                      min={1}
+                      max={5}
+                      value={subject.importance}
+                      onChange={(event) => updateManualSubject(subject.id, { importance: Number(event.target.value) || 1 })}
+                      placeholder="Priority 1-5"
                     />
-                  </div>
-                  <div className="mt-3">
-                    <label className="mb-1 block text-sm font-medium text-[var(--foreground)]">Chapters or topics</label>
-                    <Textarea
-                      value={joinTopics(exam.chapters)}
-                      onChange={(event) =>
-                        setConfirmedExams((previous) =>
-                          previous.map((item, itemIndex) =>
-                            itemIndex === index ? { ...item, chapters: splitTopics(event.target.value) } : item
-                          )
-                        )
-                      }
-                      className="min-h-[180px]"
-                      placeholder="One chapter per line"
-                    />
-                    {exam.notes ? <p className="mt-2 text-xs leading-5 text-[var(--muted-foreground)]">{exam.notes}</p> : null}
                   </div>
                 </div>
               ))}
@@ -766,9 +762,9 @@ export function PlannerSetupPanel({ loading, onGenerate }: PlannerSetupPanelProp
 
             <div className="flex flex-wrap gap-2">
               <Button type="button" onClick={() => void createPlan()} disabled={loading}>
-                {loading ? "Generating..." : "Generate chapter plan"}
+                {loading ? "Generating..." : "Generate study plan"}
               </Button>
-              <Button type="button" variant="outline" onClick={() => setConfirmedExams([])}>
+              <Button type="button" variant="outline" onClick={() => setManualSubjects([])}>
                 Start over
               </Button>
             </div>

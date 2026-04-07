@@ -172,7 +172,7 @@ export function PlannerView() {
       <div className="glass-card p-5 sm:p-6">
         <h3 className="text-sm font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Saved schedules</h3>
         <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-          Generate a new chapter plan without losing older schedules, then switch between them here.
+          Generate a new study plan without losing older schedules, then switch between them here.
         </p>
         {plans.length === 0 ? (
           <p className="mt-3 text-sm text-[var(--muted-foreground)]">No saved schedule yet.</p>
