@@ -74,6 +74,39 @@ const PHASE_CARD_CONFIG = [
   { phase: "track", label: "Track", icon: IconChartBar, description: "Review patterns, readiness, and progress." }
 ] as const;
 
+const QUICK_ACTIONS = [
+  {
+    title: "Build today’s plan",
+    description: "Open the planner if you need structure first.",
+    href: getHubHref("plan", "planner"),
+    icon: IconCalendarWeek
+  },
+  {
+    title: "Create study notes",
+    description: "Jump straight into topic notes and explanations.",
+    href: getHubHref("study", "notes"),
+    icon: IconBook2
+  },
+  {
+    title: "Take a quiz",
+    description: "Practice recall without hunting through tabs.",
+    href: getHubHref("test", "quiz"),
+    icon: IconBrain
+  },
+  {
+    title: "Revise due topics",
+    description: "Open your revision queue for what needs review now.",
+    href: getHubHref("revise", "revision-queue"),
+    icon: IconRepeat
+  },
+  {
+    title: "Check progress",
+    description: "See streaks, weak areas, and recent movement.",
+    href: "/dashboard/track",
+    icon: IconChartBar
+  }
+] as const;
+
 export function DashboardHome() {
   const router = useRouter();
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
@@ -244,8 +277,49 @@ export function DashboardHome() {
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {PHASE_CARD_CONFIG.map((item) => {
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Quick Start</p>
+            <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,2.7rem)] tracking-[-0.03em] text-[var(--foreground)]">Jump straight to a task</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">
+            Start with a common action if the full workflow feels hard to scan. The search bar above can also jump you to notes, quizzes, exams, and profile.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {QUICK_ACTIONS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link key={item.title} href={item.href} className="glass-card surface-card-hover rounded-[28px] p-5 transition">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#7B6CF6]/12 text-[#7B6CF6]">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 font-headline text-[clamp(1.55rem,4vw,2rem)] tracking-[-0.03em] text-[var(--foreground)]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">{item.description}</p>
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-[#7B6CF6]">
+                  Open <IconArrowRight className="h-4 w-4" />
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Workflow</p>
+            <h2 className="mt-2 font-headline text-[clamp(2rem,5vw,2.7rem)] tracking-[-0.03em] text-[var(--foreground)]">Browse by study stage</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">
+            Plan is for schedules and exams. Study is for learning. Test is for practice. Revise is for spaced repetition. Track is for analytics and weak topics.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          {PHASE_CARD_CONFIG.map((item) => {
           const Icon = item.icon;
           return (
             <Link
@@ -262,7 +336,8 @@ export function DashboardHome() {
               <p className="mt-4 text-sm font-medium text-[#7B6CF6]">{phaseStats[item.phase]}</p>
             </Link>
           );
-        })}
+          })}
+        </div>
       </section>
 
       <section id="exam-countdown-widget" className="glass-card rounded-[30px] p-5 md:p-6">

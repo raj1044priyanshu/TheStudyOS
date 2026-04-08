@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { IconChevronRight, IconMenu2, IconX } from "@tabler/icons-react";
+import { IconChevronRight, IconLogout, IconMenu2, IconX } from "@tabler/icons-react";
 import { CompanionBadge } from "@/components/companion/StudyCompanion";
+import { Button } from "@/components/ui/button";
 import { MOBILE_MORE_NAV_ITEMS, MOBILE_PRIMARY_NAV_ITEMS, getHubNavKey } from "@/lib/hubs";
 import { cn } from "@/lib/utils";
 
@@ -137,6 +139,31 @@ export function MobileNav() {
                       </Link>
                     );
                   })}
+                </div>
+
+                <div className="mt-4 grid gap-3 border-t border-[color:var(--panel-border)] pt-4">
+                  <div className="surface-card rounded-[22px] px-4 py-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Find things faster</p>
+                    <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
+                      Use the search bar at the top of any dashboard page to jump to notes, quizzes, exams, profile, and other tools.
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between rounded-[22px] px-4"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      void signOut({ callbackUrl: "/login" });
+                    }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <IconLogout className="h-4 w-4" />
+                      Logout
+                    </span>
+                    <span className="text-xs uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Account</span>
+                  </Button>
                 </div>
               </div>
             </motion.aside>

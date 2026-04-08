@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 import Image from "next/image";
+import { signOut } from "next-auth/react";
 import toast from "react-hot-toast";
-import { IconCamera, IconDeviceFloppy, IconMail, IconRefresh, IconSparkles, IconTrophy, IconUserCircle } from "@tabler/icons-react";
+import { IconCamera, IconDeviceFloppy, IconLogout, IconMail, IconRefresh, IconSparkles, IconTrophy, IconUserCircle } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -287,6 +288,10 @@ export function ProfilePage() {
             <Button variant="outline" onClick={restartTour} className="gap-2">
               <IconRefresh className="h-4 w-4" />
               Restart Tour
+            </Button>
+            <Button variant="outline" onClick={() => void signOut({ callbackUrl: "/login" })} className="gap-2">
+              <IconLogout className="h-4 w-4" />
+              Logout
             </Button>
             <Button onClick={saveProfile} disabled={saving || !changed} className="gap-2">
               <IconDeviceFloppy className="h-4 w-4" />
