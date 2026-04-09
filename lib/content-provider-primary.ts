@@ -40,6 +40,28 @@ interface UsageSummary {
   totalTokens: number;
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfterMs(value: string | null, attempt: number) {
+  if (!value) {
+    return 800 * attempt;
+  }
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  const dateMs = Date.parse(value);
+  if (Number.isFinite(dateMs)) {
+    return Math.max(dateMs - Date.now(), 0);
+  }
+
+  return 800 * attempt;
+}
+
 export interface GeneratedTextResult {
   text: string;
   provider: "primary";
@@ -123,52 +145,65 @@ async function requestPrimaryContent({
   temperature?: number;
   responseModalities?: string[];
 }) {
-  const response = await fetch(buildPrimaryUrl(apiBase, model), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          role: "user",
-          parts: parts.map((part) =>
-            part.type === "text"
-              ? { text: part.text }
-              : {
-                  inline_data: {
-                    mime_type: part.mimeType,
-                    data: part.data
-                  }
+  const body = JSON.stringify({
+    contents: [
+      {
+        role: "user",
+        parts: parts.map((part) =>
+          part.type === "text"
+            ? { text: part.text }
+            : {
+                inline_data: {
+                  mime_type: part.mimeType,
+                  data: part.data
                 }
-          )
+              }
+        )
+      }
+    ],
+    ...(systemPrompt
+      ? {
+          system_instruction: {
+            parts: [{ text: systemPrompt }]
+          }
         }
-      ],
-      ...(systemPrompt
-        ? {
-            system_instruction: {
-              parts: [{ text: systemPrompt }]
-            }
+      : {}),
+    ...((typeof temperature === "number" || responseModalities?.length)
+      ? {
+          generationConfig: {
+            ...(typeof temperature === "number" ? { temperature } : {}),
+            ...(responseModalities?.length ? { responseModalities } : {})
           }
-        : {}),
-      ...((typeof temperature === "number" || responseModalities?.length)
-        ? {
-            generationConfig: {
-              ...(typeof temperature === "number" ? { temperature } : {}),
-              ...(responseModalities?.length ? { responseModalities } : {})
-            }
-          }
-        : {})
-    })
+        }
+      : {})
   });
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(detail || `Primary provider request failed for ${model}`);
+  let lastErrorDetail = "";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await fetch(buildPrimaryUrl(apiBase, model), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey
+      },
+      body,
+      cache: "no-store"
+    });
+
+    if (response.ok) {
+      return (await response.json()) as PrimaryContentResponse;
+    }
+
+    lastErrorDetail = await response.text().catch(() => "");
+    const shouldRetry = [429, 500, 502, 503, 504].includes(response.status) && attempt < 3;
+    if (!shouldRetry) {
+      throw new Error(lastErrorDetail || `Primary provider request failed for ${model}`);
+    }
+
+    await sleep(parseRetryAfterMs(response.headers.get("retry-after"), attempt));
   }
 
-  return (await response.json()) as PrimaryContentResponse;
+  throw new Error(lastErrorDetail || `Primary provider request failed for ${model}`);
 }
 
 async function requestImagenContent({
@@ -239,7 +274,7 @@ function extractInlineImage(part: ProviderPart) {
 export async function generatePrimaryTextWithMetadata(prompt: string, systemPrompt?: string): Promise<GeneratedTextResult> {
   const config = await getPrimaryConfig();
   const errors: string[] = [];
-  const models = uniqueModels([config.textModel, "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"]);
+  const models = uniqueModels([config.textModel, "gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash"]);
 
   for (const model of models) {
     try {

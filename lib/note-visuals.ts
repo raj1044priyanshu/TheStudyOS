@@ -35,6 +35,41 @@ Requirements:
 - educational and student-friendly`;
 }
 
+async function uploadDeterministicFallbackVisual({
+  noteId,
+  key,
+  subject,
+  title,
+  description
+}: {
+  noteId: string;
+  key: string;
+  subject: string;
+  title: string;
+  description: string;
+}): Promise<NoteVisual> {
+  const rendered = renderDeterministicNoteVisual({
+    subject,
+    title,
+    description
+  });
+  const uploaded = await uploadNoteVisualImage({
+    base64Data: rendered.data,
+    mimeType: rendered.mimeType,
+    noteId,
+    key
+  });
+
+  return {
+    key,
+    description,
+    imageUrl: uploaded.secure_url,
+    provider: rendered.provider,
+    model: rendered.model,
+    generatedAt: new Date().toISOString()
+  };
+}
+
 export async function generateNoteVisual({
   noteId,
   key,
@@ -51,14 +86,36 @@ export async function generateNoteVisual({
   userId?: string;
 }): Promise<NoteVisual | null> {
   if (shouldUseDeterministicNoteVisual(description)) {
-    const rendered = renderDeterministicNoteVisual({
+    return uploadDeterministicFallbackVisual({
+      noteId,
+      key,
       subject,
       title,
       description
     });
+  }
+
+  try {
+    const generated = await generateImageWithMetadata(buildNoteVisualPrompt({ subject, title, description }), NOTE_VISUAL_SYSTEM_PROMPT, {
+      route: "notes:visuals",
+      userId,
+      entityType: "note",
+      entityId: noteId
+    });
+
+    if (!generated.data || !generated.mimeType.startsWith("image/")) {
+      return uploadDeterministicFallbackVisual({
+        noteId,
+        key,
+        subject,
+        title,
+        description
+      });
+    }
+
     const uploaded = await uploadNoteVisualImage({
-      base64Data: rendered.data,
-      mimeType: rendered.mimeType,
+      base64Data: generated.data,
+      mimeType: generated.mimeType,
       noteId,
       key
     });
@@ -67,38 +124,25 @@ export async function generateNoteVisual({
       key,
       description,
       imageUrl: uploaded.secure_url,
-      provider: rendered.provider,
-      model: rendered.model,
+      provider: generated.provider,
+      model: generated.model,
       generatedAt: new Date().toISOString()
     };
+  } catch (error) {
+    console.warn("Falling back to deterministic note visual after provider failure", {
+      noteId,
+      key,
+      error
+    });
+
+    return uploadDeterministicFallbackVisual({
+      noteId,
+      key,
+      subject,
+      title,
+      description
+    });
   }
-
-  const generated = await generateImageWithMetadata(buildNoteVisualPrompt({ subject, title, description }), NOTE_VISUAL_SYSTEM_PROMPT, {
-    route: "notes:visuals",
-    userId,
-    entityType: "note",
-    entityId: noteId
-  });
-
-  if (!generated.data || !generated.mimeType.startsWith("image/")) {
-    return null;
-  }
-
-  const uploaded = await uploadNoteVisualImage({
-    base64Data: generated.data,
-    mimeType: generated.mimeType,
-    noteId,
-    key
-  });
-
-  return {
-    key,
-    description,
-    imageUrl: uploaded.secure_url,
-    provider: generated.provider,
-    model: generated.model,
-    generatedAt: new Date().toISOString()
-  };
 }
 
 export function normalizeNoteVisualErrorMessage(error: unknown) {

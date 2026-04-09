@@ -118,13 +118,15 @@ async function generateReviewedNote({
   topic,
   grade,
   detailLevel,
-  style
+  style,
+  userId
 }: {
   subject: string;
   topic: string;
   grade: string;
   detailLevel: "quick" | "standard" | "detailed";
   style: "minimal" | "classic" | "topper";
+  userId?: string;
 }) {
   const systemPrompt = TOPPER_PROMPT_TEMPLATE.replace("{class}", grade).replace("{topic}", topic).replace("{subject}", subject);
   let issues: string[] = [];
@@ -135,7 +137,11 @@ async function generateReviewedNote({
         ? buildBasePrompt({ subject, topic, grade, detailLevel, style })
         : buildRepairPrompt({ subject, topic, grade, detailLevel, style, issues });
 
-    const generated = await generateContentWithMetadata(prompt, systemPrompt);
+    const generated = await generateContentWithMetadata(prompt, systemPrompt, {
+      route: "notes",
+      userId,
+      entityType: "note"
+    });
     const analysis = analyzeNoteContent(generated.text, "save");
 
     if (analysis.status === "pass") {
@@ -292,7 +298,7 @@ export async function POST(request: Request) {
   const { subject, topic, class: grade, detailLevel, style } = parsed.data;
 
   try {
-    const generated = await generateReviewedNote({ subject, topic, grade, detailLevel, style });
+    const generated = await generateReviewedNote({ subject, topic, grade, detailLevel, style, userId: authResult.userId });
 
     await connectToDatabase();
     const note = await NoteModel.create({
