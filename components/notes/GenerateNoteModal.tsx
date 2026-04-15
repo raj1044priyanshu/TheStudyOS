@@ -95,15 +95,7 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
     });
 
     window.dispatchEvent(new CustomEvent("tour:note-generated"));
-    if (typeof data.visuals?.generated === "number" && data.visuals.generated > 0) {
-      toast.success(
-        data.visuals.missing > 0
-          ? `Notes generated with ${data.visuals.generated} study visual${data.visuals.generated === 1 ? "" : "s"}.`
-          : "Notes and study visuals generated successfully"
-      );
-    } else {
-      toast.success("Notes generated successfully");
-    }
+    toast.success("Notes generated successfully");
     onCreated();
     onClose();
   }
@@ -125,7 +117,7 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
           </Button>
           <Button data-tour-id="notes-generate-submit" onClick={submit} disabled={loading || !form.topic.trim()} className="gap-2">
             <IconWand className="h-4 w-4" />
-            {loading ? "Generating Note & Visuals..." : "Generate Note"}
+            {loading ? "Generating Note..." : "Generate Note"}
           </Button>
         </div>
       }
@@ -245,7 +237,7 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
                 </div>
                 <p className="note-handwritten-body text-note-secondary pt-1 text-[1.2rem]">
                   <IconPencil className="mr-1 inline h-4 w-4" />
-                  Preparing {stylePreviewLabel.toLowerCase()} and study visuals...
+                  Preparing {stylePreviewLabel.toLowerCase()}...
                 </p>
               </div>
             ) : (
@@ -254,7 +246,7 @@ export function GenerateNoteModal({ open, onClose, onCreated, initialValues }: P
                   {form.topic || "Topic heading appears here"}
                 </p>
                 <p className="note-handwritten-body text-note-secondary mt-2 text-[1.08rem] leading-8 sm:text-[1.18rem]">
-                  Includes clean sections, high-contrast highlights, and bright study visuals for easier revision.
+                  Includes clean sections, high-contrast highlights, and a revision-friendly handwritten layout.
                 </p>
                 <div className="mt-3 inline-flex max-w-full items-center gap-1 rounded-full bg-[#FEF08A] px-2.5 py-1.5 text-xs font-medium leading-4 text-slate-800">
                   <IconSparkles className="h-3 w-3 shrink-0" />

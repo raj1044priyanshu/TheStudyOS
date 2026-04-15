@@ -5,7 +5,7 @@ import { auth } from "@/auth";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
 import { LoginButton } from "@/components/auth/LoginButton";
-import { CompanionBadge, CompanionPanel } from "@/components/companion/StudyCompanion";
+import { CompanionPanel } from "@/components/companion/StudyCompanion";
 import { connectToDatabase } from "@/lib/mongodb";
 import { UserModel } from "@/models/User";
 
@@ -80,7 +80,6 @@ export default async function LoginPage() {
                 <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--tertiary-foreground)]">Welcome</p>
                 <h2 className="mt-3 font-headline text-5xl tracking-[-0.03em] text-[var(--foreground)]">Sign in</h2>
               </div>
-              <CompanionBadge pose="wave" size={64} />
             </div>
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">
               Continue with Google to open your study workspace, planner state, notes, and progress tracking.

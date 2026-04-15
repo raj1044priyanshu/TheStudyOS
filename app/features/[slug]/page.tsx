@@ -35,6 +35,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description: feature.seoDescription,
     alternates: {
       canonical: `/features/${feature.slug}`
+    },
+    openGraph: {
+      title: `${feature.title} — StudyOS`,
+      description: feature.seoDescription,
+      url: `/features/${feature.slug}`,
+      type: "website"
     }
   };
 }

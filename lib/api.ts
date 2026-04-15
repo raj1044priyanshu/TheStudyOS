@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
@@ -169,4 +170,21 @@ export async function routeError(routeName: string, error: unknown, status = 500
   console.error(`[${routeName}]`, error);
   await captureServerRouteError(routeName, error, status);
   return NextResponse.json({ error: "Something went wrong. Please try again." }, { status });
+}
+
+export function verifyCronSecret(request: Request) {
+  const expected = process.env.CRON_SECRET ?? "";
+  const provided = request.headers.get("x-cron-secret") ?? "";
+  if (!expected) return false;
+  if (expected.length !== provided.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
+}
+
+export async function safeParseRequestBody<T = unknown>(request: Request): Promise<{ data: T } | { error: NextResponse }> {
+  try {
+    const data = await request.json();
+    return { data: data as T };
+  } catch {
+    return { error: NextResponse.json({ error: "Invalid or missing JSON body" }, { status: 400 }) };
+  }
 }

@@ -36,6 +36,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     description: entry.description,
     alternates: {
       canonical: entry.path
+    },
+    openGraph: {
+      title: `${entry.title} — StudyOS Blog`,
+      description: entry.description,
+      url: entry.path,
+      type: "article",
+      publishedTime: entry.publishedAt,
+      modifiedTime: entry.updatedAt ?? entry.publishedAt,
+      authors: [entry.author ?? "StudyOS Editorial Team"]
     }
   };
 }

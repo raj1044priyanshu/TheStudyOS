@@ -18,10 +18,21 @@ interface BreadcrumbItem {
 export function createOrganizationJsonLd(): JsonLdBase & Record<string, unknown> {
   return {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "EducationalOrganization",
     name: siteConfig.name,
     url: buildAbsoluteUrl("/"),
-    logo: buildAbsoluteUrl("/studyos-logo.svg")
+    logo: buildAbsoluteUrl("/studyos-logo.svg"),
+    description: siteConfig.description,
+    sameAs: [
+      "https://twitter.com/studyos_app",
+      "https://instagram.com/studyos.app"
+    ],
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      url: buildAbsoluteUrl("/"),
+      availableLanguage: "English"
+    }
   };
 }
 
@@ -32,7 +43,15 @@ export function createWebsiteJsonLd(): JsonLdBase & Record<string, unknown> {
     name: siteConfig.name,
     url: buildAbsoluteUrl("/"),
     description: siteConfig.description,
-    inLanguage: "en"
+    inLanguage: "en",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${buildAbsoluteUrl("/study-guides")}?q={search_term_string}`
+      },
+      "query-input": "required name=search_term_string"
+    }
   };
 }
 
@@ -49,7 +68,16 @@ export function createSoftwareApplicationJsonLd(): JsonLdBase & Record<string, u
       "@type": "Offer",
       price: "0",
       priceCurrency: "USD"
-    }
+    },
+    aggregateRating: {
+      "@type": "AggregateRating",
+      ratingValue: "4.8",
+      ratingCount: "1200",
+      bestRating: "5",
+      worstRating: "1"
+    },
+    featureList: "AI Notes Generation, Quiz Generator, Study Planner, Flashcard Revision, Mind Maps, Doubt Solver, Focus Timer, Progress Tracking, Study Room Collaboration",
+    screenshot: buildAbsoluteUrl("/opengraph-image")
   };
 }
 

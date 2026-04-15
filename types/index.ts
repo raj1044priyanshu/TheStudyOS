@@ -148,15 +148,6 @@ export interface NoteSummary {
   cachedAt?: string | null;
 }
 
-export interface NoteVisual {
-  key: string;
-  description: string;
-  imageUrl: string;
-  provider: string;
-  model: string;
-  generatedAt: string;
-}
-
 export interface StudyTask {
   subject: string;
   topic: string;

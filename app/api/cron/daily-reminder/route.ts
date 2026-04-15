@@ -4,10 +4,10 @@ import { UserModel } from "@/models/User";
 import { sendDailyReminderEmail } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
 import { dayKeyInTimeZone, hourInTimeZone, normalizeTimeZone } from "@/lib/timezone";
+import { verifyCronSecret } from "@/lib/api";
 
 export async function GET(request: Request) {
-  const secret = request.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

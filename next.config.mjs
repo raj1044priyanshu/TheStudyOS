@@ -6,6 +6,7 @@ const distDir = process.env.NEXT_DIST_DIR?.trim();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  poweredByHeader: false,
   distDir: distDir || ".next",
   webpack: (config, { dev }) => {
     if (dev && process.env.NEXT_DISABLE_WEBPACK_CACHE === "true") {

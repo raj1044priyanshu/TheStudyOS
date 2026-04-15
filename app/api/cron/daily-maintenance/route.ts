@@ -1,14 +1,13 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { UserModel } from "@/models/User";
-import { sendDailyReminderEmail, sendStreakBrokenEmail, sendStreakRiskEmail } from "@/lib/email";
+import { sendDailyReminderEmail } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
-import { usersForStreakBreak, usersForStreakRisk } from "@/lib/progress";
 import { dayKeyInTimeZone, hourInTimeZone, normalizeTimeZone } from "@/lib/timezone";
+import { verifyCronSecret } from "@/lib/api";
 
 export async function GET(request: Request) {
-  const secret = request.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -57,85 +56,12 @@ export async function GET(request: Request) {
     }
   }
 
-  const streakRiskUsers = await usersForStreakRisk();
-  let streakRiskSent = 0;
-  let streakRiskFailed = 0;
-
-  for (const user of streakRiskUsers) {
-    try {
-      await sendStreakRiskEmail(user.email, user.streak);
-      await createNotification({
-        userId: user.userId,
-        type: "reminder",
-        title: "Streak reminder",
-        message: `Your ${user.streak}-day streak is waiting for today's study session.`,
-        actionUrl: "/planner"
-      });
-      await UserModel.updateOne(
-        { _id: user.userId },
-        {
-          $set: {
-            lastStreakRiskReminderDay: user.dayKey
-          }
-        }
-      );
-      streakRiskSent += 1;
-    } catch (error) {
-      streakRiskFailed += 1;
-      console.error("Failed to process streak-risk notification", error);
-    }
-  }
-
-  const streakBreakCandidates = await usersForStreakBreak();
-  let streakBreakSent = 0;
-  let streakBreakFailed = 0;
-
-  for (const item of streakBreakCandidates) {
-    try {
-      const previous = item.streak;
-      await UserModel.updateOne(
-        { _id: item.userId, streak: { $gt: 0 } },
-        {
-          $set: {
-            streakBreakPending: true,
-            lastBrokenStreak: previous,
-            streakBrokenAt: new Date(),
-            lastStreakBreakNoticeDay: item.dayKey,
-            streak: 0
-          }
-        }
-      );
-
-      await createNotification({
-        userId: item.userId,
-        type: "system",
-        title: "Streak broken",
-        message: `Your ${previous}-day streak was broken. Start again today.`,
-        actionUrl: "/dashboard"
-      });
-      await sendStreakBrokenEmail(item.email, previous);
-      streakBreakSent += 1;
-    } catch (error) {
-      streakBreakFailed += 1;
-      console.error("Failed to process streak-break notification", error);
-    }
-  }
-
   return NextResponse.json({
     dailyReminder: {
       candidates: users.length,
       sent: dailyReminderSent,
       failed: dailyReminderFailed
-    },
-    streakRisk: {
-      candidates: streakRiskUsers.length,
-      sent: streakRiskSent,
-      failed: streakRiskFailed
-    },
-    streakBreak: {
-      candidates: streakBreakCandidates.length,
-      sent: streakBreakSent,
-      failed: streakBreakFailed
     }
   });
 }
+

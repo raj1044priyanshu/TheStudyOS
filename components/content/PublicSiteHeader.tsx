@@ -85,7 +85,7 @@ export function PublicSiteHeader({ trackingLocation = "public-header" }: { track
 
   return (
     <>
-      <header className="sticky top-0 z-30 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-6 sm:pt-4">
+      <header className="sticky top-0 z-30 bg-[color:var(--page-bg)]/80 px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-sm sm:px-6 sm:pb-6 sm:pt-4">
         <div className="glass-nav mx-auto flex w-full max-w-6xl items-center justify-between gap-3 rounded-[24px] border border-[color:var(--panel-border)] px-3 py-3 sm:px-4 lg:px-5">
           <Logo compact className="min-w-0" href="/#top" />
 

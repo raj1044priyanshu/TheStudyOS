@@ -243,7 +243,7 @@ export default async function LandingPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid items-stretch gap-4 md:grid-cols-3">
               {settings.landing.testimonials.map((item) => (
                 <div key={item.name} className="surface-card rounded-[22px] p-5">
                   <p className="text-sm leading-6 text-[var(--foreground)]">{`"${item.text}"`}</p>

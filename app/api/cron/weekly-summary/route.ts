@@ -7,10 +7,10 @@ import { ProgressModel } from "@/models/Progress";
 import { QuizModel } from "@/models/Quiz";
 import { sendWeeklySummaryEmail } from "@/lib/email";
 import { createNotification } from "@/lib/notifications";
+import { verifyCronSecret } from "@/lib/api";
 
 export async function GET(request: Request) {
-  const secret = request.headers.get("x-cron-secret");
-  if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+  if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

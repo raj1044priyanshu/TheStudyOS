@@ -38,7 +38,7 @@ Topic: ${scan.topic}
 Source transcription:
 ${scan.transcription}
 
-Return only tagged note content using StudyOS note tags like [TITLE], [HEADING1], [BULLET_POINT], [CHECK_POINT], [STICKY_YELLOW], [FORMULA_BOX], [EXAMPLE_BOX], [DIAGRAM_PLACEHOLDER].`,
+Return only tagged note content using StudyOS note tags like [TITLE], [HEADING1], [BULLET_POINT], [CHECK_POINT], [STICKY_YELLOW], [FORMULA_BOX], and [EXAMPLE_BOX].`,
       "You are converting scanned study material into clean, exam-ready StudyOS notes."
     );
 

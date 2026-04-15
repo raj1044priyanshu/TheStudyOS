@@ -249,10 +249,9 @@ export async function resolveAiProviderConfig(key: AiProviderKey): Promise<Resol
 }
 
 export async function getAiConfigOverview() {
-  const [primary, fallback, image] = await Promise.all([
+  const [primary, fallback] = await Promise.all([
     resolveAiProviderConfig("primary"),
-    resolveAiProviderConfig("fallback"),
-    resolveAiProviderConfig("image")
+    resolveAiProviderConfig("fallback")
   ]);
 
   return {
@@ -265,11 +264,6 @@ export async function getAiConfigOverview() {
     fallback: {
       ...fallback,
       apiKeyPresent: Boolean(fallback.apiKey),
-      apiKey: undefined
-    },
-    image: {
-      ...image,
-      apiKeyPresent: Boolean(image.apiKey),
       apiKey: undefined
     }
   };
@@ -291,8 +285,7 @@ export async function validateAiProviderPatch(key: AiProviderKey, patch: AiConfi
   try {
     if (provider === "google") {
       const textModel = normalizeModelValue(patch.textModel, envConfig.textModel);
-      const imageModel = normalizeImageModel(patch.imageModel, envConfig.imageModel);
-      const modelChecks = [textModel, imageModel].filter(Boolean);
+      const modelChecks = [textModel].filter(Boolean);
 
       for (const modelName of modelChecks) {
         const response = await fetch(`${apiBase}/models/${encodeURIComponent(modelName)}`, {
@@ -311,18 +304,9 @@ export async function validateAiProviderPatch(key: AiProviderKey, patch: AiConfi
         }
       }
 
-      if (!/image|imagen/i.test(imageModel)) {
-        return {
-          status: "warning" as const,
-          message: "The configured image model does not look like an image-capable Gemini or Imagen model."
-        };
-      }
-
       return {
         status: "valid" as const,
-        message: isImagenModel(imageModel)
-          ? "Google config validated. Imagen models will use the dedicated image endpoint."
-          : "Google config validated successfully."
+        message: "Google config validated successfully."
       };
     }
 

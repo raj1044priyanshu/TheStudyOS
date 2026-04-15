@@ -26,11 +26,8 @@ const UserSchema = new Schema(
     level: { type: Number, default: 1 },
     lastLevelUpAt: { type: Date, default: null },
     usedFeatures: { type: [String], default: [] },
-    // Added for Feature Onboarding: onboardingCompleted
     onboardingCompleted: { type: Boolean, default: false },
-    // Added for Feature Onboarding: onboardingStep
     onboardingStep: { type: Number, default: 0 },
-    // Added for Feature Onboarding: studyProfile
     studyProfile: {
       class: { type: String, default: "" },
       board: { type: String, default: "" },

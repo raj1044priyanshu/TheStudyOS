@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { requireUser, applyRouteRateLimit } from "@/lib/api";
 import { generateTextWithMetadata as generateContentWithMetadata } from "@/lib/content-service";
-import { analyzeNoteContent, extractNoteDiagramPlaceholders } from "@/lib/note-content";
+import { analyzeNoteContent } from "@/lib/note-content";
 import { NoteModel } from "@/models/Note";
 import { logActivity } from "@/lib/progress";
 import { extractFormulasFromNote, upsertFormulaEntry } from "@/lib/formula-sheet";
@@ -12,8 +12,6 @@ import { scheduleRevisionItem } from "@/lib/revision";
 import { upsertConceptNode } from "@/lib/knowledge-graph";
 import { sendAchievementEmail, sendStreakBrokenEmail, sendStreakMilestoneEmail } from "@/lib/email";
 import { createAchievementNotifications, createNotification } from "@/lib/notifications";
-import { generateNoteVisual, normalizeNoteVisualErrorMessage, summarizeNoteVisualErrors } from "@/lib/note-visuals";
-import type { NoteVisual } from "@/types";
 
 const createNoteSchema = z.object({
   subject: z.string().min(2),
@@ -51,7 +49,6 @@ Use these special tags in your output:
 [DEFINITION_BOX] Term :: Definition here [/DEFINITION_BOX]
 [EXAMPLE_BOX] Worked example here [/EXAMPLE_BOX]
 [MEMORY_BOX] Mnemonic or memory trick [/MEMORY_BOX]
-[DIAGRAM_PLACEHOLDER] Describe a clean educational visual that belongs here [/DIAGRAM_PLACEHOLDER]
 [DIVIDER]
 [MARGIN_NOTE] Side note or annotation [/MARGIN_NOTE]
 Generate thorough, complete notes for a {class} student on "{topic}" from {subject}.
@@ -82,7 +79,6 @@ Rules:
 - Use [TITLE], [SUBJECT_TAG], and [DATE_TAG] exactly once each.
 - Use at least 2 heading blocks total across [HEADING1], [HEADING2], and [HEADING3].
 - Use at least 6 tagged study body blocks from [STAR_POINT], [ARROW_POINT], [CHECK_POINT], [BULLET_POINT], [FORMULA_BOX], [DEFINITION_BOX], [EXAMPLE_BOX], [MEMORY_BOX], and sticky notes.
-- Include at least 2 [DIAGRAM_PLACEHOLDER] lines for clean educational visuals or diagrams.
 - Only use inline [HIGHLIGHT_*] tags in balanced open/close pairs. Never leave an unmatched highlight tag behind.
 - Keep every statement classroom-safe and fact-focused.
 - Do not guess, hedge, or include low-confidence wording.
@@ -161,70 +157,6 @@ async function generateReviewedNote({
   }
 
   throw new Error("We couldn't generate a reliable note this time. Please try a narrower topic and try again.");
-}
-
-async function generateAndPersistNoteVisuals(note: {
-  _id: Types.ObjectId;
-  subject: string;
-  title: string;
-  content: string;
-  visualGenerationStatus?: string;
-  visualGenerationError?: string;
-  visuals?: Array<NoteVisual & { generatedAt: string | Date }>;
-  save: () => Promise<unknown>;
-}, userId: string) {
-  const placeholders = extractNoteDiagramPlaceholders(note.content).slice(0, 8);
-  if (!placeholders.length) {
-    note.visualGenerationStatus = "idle";
-    note.visualGenerationError = "";
-    return {
-      generated: 0,
-      missing: 0,
-      visuals: [] as NoteVisual[]
-    };
-  }
-
-  const visuals: NoteVisual[] = [];
-  const failures: string[] = [];
-  const failureMessages: string[] = [];
-  for (const placeholder of placeholders) {
-    try {
-      const visual = await generateNoteVisual({
-        noteId: note._id.toString(),
-        key: placeholder.key,
-        subject: note.subject,
-        title: note.title,
-        description: placeholder.description,
-        userId
-      });
-
-      if (visual) {
-        visuals.push(visual);
-      }
-    } catch (error) {
-      failures.push(placeholder.key);
-      failureMessages.push(normalizeNoteVisualErrorMessage(error));
-      console.error("Failed to generate note visual during note creation", {
-        noteId: note._id.toString(),
-        key: placeholder.key,
-        error
-      });
-    }
-  }
-
-  note.visuals = visuals;
-  note.visualGenerationStatus = failures.length ? (visuals.length ? "partial_error" : "error") : visuals.length ? "ready" : "idle";
-  note.visualGenerationError = failures.length ? summarizeNoteVisualErrors(failureMessages, failures.length) : "";
-
-  if (visuals.length > 0 || failures.length > 0) {
-    await note.save();
-  }
-
-  return {
-    generated: visuals.length,
-    missing: Math.max(placeholders.length - visuals.length, 0),
-    visuals
-  };
 }
 
 export async function GET() {
@@ -312,7 +244,6 @@ export async function POST(request: Request) {
       generationMeta: generated.generationMeta,
       tags: [subject, detailLevel, style]
     });
-    const visuals = await generateAndPersistNoteVisuals(note, authResult.userId);
 
     const events = await logActivity({
       userId: authResult.userId,
@@ -404,7 +335,7 @@ export async function POST(request: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, note, events, visuals });
+    return NextResponse.json({ success: true, note, events });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Note generation failed";
     return NextResponse.json({ error: message }, { status: 502 });
