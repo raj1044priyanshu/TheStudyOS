@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
+import { BACKGROUND_FETCH_HEADER } from "@/lib/client-network";
 
 const SHOW_DELAY_MS = 140;
 const COMPLETE_HIDE_DELAY_MS = 220;
@@ -35,6 +36,27 @@ function isInternalNavigableAnchor(target: EventTarget | null) {
   } catch {
     return null;
   }
+}
+
+function readHeaderValue(headers: Headers | null, key: string) {
+  if (!headers) {
+    return "";
+  }
+
+  return headers.get(key)?.trim() ?? "";
+}
+
+function isBackgroundRequest(input: RequestInfo | URL, init?: RequestInit) {
+  const nextHeaders = init?.headers ? new Headers(init.headers) : null;
+  if (readHeaderValue(nextHeaders, BACKGROUND_FETCH_HEADER) === "1") {
+    return true;
+  }
+
+  if (input instanceof Request) {
+    return readHeaderValue(input.headers, BACKGROUND_FETCH_HEADER) === "1";
+  }
+
+  return false;
 }
 
 export function GlobalLoadingBar() {
@@ -114,6 +136,7 @@ export function GlobalLoadingBar() {
 
     window.fetch = async (...args) => {
       const input = args[0];
+      const init = args[1];
       const requestUrl =
         typeof input === "string"
           ? input
@@ -124,7 +147,7 @@ export function GlobalLoadingBar() {
               : "";
 
       const isInternalRequest = !requestUrl || requestUrl.startsWith("/") || requestUrl.startsWith(window.location.origin);
-      if (!isInternalRequest) {
+      if (!isInternalRequest || isBackgroundRequest(input, init)) {
         return originalFetch(...args);
       }
 

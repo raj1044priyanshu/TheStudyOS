@@ -19,11 +19,11 @@ export const FEATURE_PAGES: FeaturePage[] = [
     slug: "handwritten-notes",
     title: "Handwritten Notes",
     shortTitle: "Notes",
-    description: "Generate polished study notes with structured headings, classroom-safe explanations, and built-in visual support.",
-    seoDescription: "Create exam-ready handwritten-style study notes with structured explanations, diagrams, and export-friendly layouts.",
+    description: "Generate polished study notes with structured headings, classroom-safe explanations, and export-friendly reading.",
+    seoDescription: "Create exam-ready handwritten-style study notes with structured explanations and export-friendly layouts.",
     eyebrow: "Feature",
     iconKey: "book",
-    highlights: ["Structured note layouts", "Diagram-ready explanations", "Export-friendly reading views"],
+    highlights: ["Structured note layouts", "Classroom-safe explanations", "Export-friendly reading views"],
     benefits: [
       "Turn a study topic into a readable note set with a consistent visual format.",
       "Keep explanations exam-safe and classroom aligned instead of generic AI text.",
@@ -37,7 +37,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
     faqs: [
       {
         question: "What makes the notes different from plain AI text?",
-        answer: "StudyOS formats notes into sectioned, revision-friendly study material with clearer structure and visual placeholders."
+        answer: "StudyOS formats notes into sectioned, revision-friendly study material with clearer structure and better scanability."
       },
       {
         question: "Can I use notes for revision later?",

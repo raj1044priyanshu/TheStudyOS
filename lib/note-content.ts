@@ -386,9 +386,6 @@ function collectIssues(rawContent: string, metrics: NoteContentMetrics, mode: An
   if (metrics.featureBlockCount < 1) {
     issues.push("Add at least one definition, example, memory, formula, or sticky note block.");
   }
-  if (metrics.diagramCount < 2) {
-    issues.push("At least two diagram placeholders are required.");
-  }
   if (metrics.recognizedRatio < (mode === "save" ? 0.7 : 0.35)) {
     issues.push("Too much of the note fell outside the tagged structure.");
   }

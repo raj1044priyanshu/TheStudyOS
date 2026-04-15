@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { buildBackgroundRequestInit } from "@/lib/client-network";
 import { getPusherClientConfig } from "@/lib/pusher-client";
 import type {
   QuizOptionKey,
@@ -37,6 +38,11 @@ interface JoinedRoomResponse {
   error?: string;
 }
 
+interface CanvasViewportSize {
+  width: number;
+  height: number;
+}
+
 interface ActiveQuizState {
   topic: string;
   subject: string;
@@ -45,6 +51,8 @@ interface ActiveQuizState {
   questionStartedAt: number;
   status: "live" | "complete";
 }
+
+type WhiteboardSyncPhase = "segment" | "final";
 
 interface JoinOptions {
   silent?: boolean;
@@ -58,6 +66,65 @@ interface PusherSubscriptionErrorPayload {
   error?: string;
 }
 
+const LEGACY_WHITEBOARD_WIDTH = 900;
+const LEGACY_WHITEBOARD_HEIGHT = 560;
+const WHITEBOARD_SYNC_INTERVAL_MS = 80;
+const WHITEBOARD_SYNC_BATCH_SIZE = 6;
+const DEFAULT_WHITEBOARD_COLOR = "#7B6CF6";
+const DEFAULT_WHITEBOARD_WIDTH = 3;
+
+function clampUnitValue(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function normalizeWhiteboardPoint(point: { x: number; y: number }) {
+  const x = Number(point.x);
+  const y = Number(point.y);
+
+  if (x > 1 || y > 1) {
+    return {
+      x: clampUnitValue(x / LEGACY_WHITEBOARD_WIDTH),
+      y: clampUnitValue(y / LEGACY_WHITEBOARD_HEIGHT)
+    };
+  }
+
+  return {
+    x: clampUnitValue(x),
+    y: clampUnitValue(y)
+  };
+}
+
+function pointsEqual(a: { x: number; y: number }, b: { x: number; y: number }) {
+  return Math.abs(a.x - b.x) < 0.0001 && Math.abs(a.y - b.y) < 0.0001;
+}
+
+function mergeWhiteboardPoints(
+  previous: StudyRoomWhiteboardStroke["points"],
+  nextPoints: StudyRoomWhiteboardStroke["points"]
+) {
+  const merged = previous.map((point) => normalizeWhiteboardPoint(point));
+
+  for (const point of nextPoints) {
+    const normalizedPoint = normalizeWhiteboardPoint(point);
+    if (!merged.length || !pointsEqual(merged[merged.length - 1], normalizedPoint)) {
+      merged.push(normalizedPoint);
+    }
+  }
+
+  return merged;
+}
+
+function normalizeWhiteboardStroke(stroke: StudyRoomWhiteboardStroke): StudyRoomWhiteboardStroke {
+  return {
+    ...stroke,
+    authorUserId: String(stroke.authorUserId),
+    color: stroke.color || DEFAULT_WHITEBOARD_COLOR,
+    width: Number(stroke.width) || DEFAULT_WHITEBOARD_WIDTH,
+    createdAt: stroke.createdAt ? new Date(stroke.createdAt).toISOString() : new Date().toISOString(),
+    points: mergeWhiteboardPoints([], stroke.points ?? [])
+  };
+}
+
 function createWhiteboardStrokeId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -67,14 +134,34 @@ function createWhiteboardStrokeId() {
 }
 
 function appendUniqueWhiteboardStroke(previous: StudyRoomWhiteboardStroke[], stroke: StudyRoomWhiteboardStroke) {
-  if (previous.some((item) => item.strokeId === stroke.strokeId)) {
-    return previous;
+  const normalizedStroke = normalizeWhiteboardStroke(stroke);
+  const existingIndex = previous.findIndex((item) => item.strokeId === normalizedStroke.strokeId);
+
+  if (existingIndex === -1) {
+    return [...previous, normalizedStroke].slice(-120);
   }
 
-  return [...previous, stroke].slice(-120);
+  const next = [...previous];
+  if (normalizedStroke.points.length >= previous[existingIndex].points.length) {
+    next[existingIndex] = normalizedStroke;
+  }
+
+  return next;
 }
 
-function drawWhiteboardStroke(context: CanvasRenderingContext2D, stroke: StudyRoomWhiteboardStroke) {
+function toCanvasPoint(point: { x: number; y: number }, size: CanvasViewportSize) {
+  const normalizedPoint = normalizeWhiteboardPoint(point);
+  return {
+    x: normalizedPoint.x * size.width,
+    y: normalizedPoint.y * size.height
+  };
+}
+
+function drawWhiteboardStroke(
+  context: CanvasRenderingContext2D,
+  stroke: StudyRoomWhiteboardStroke,
+  size: CanvasViewportSize
+) {
   if (stroke.points.length < 2) {
     return;
   }
@@ -85,25 +172,62 @@ function drawWhiteboardStroke(context: CanvasRenderingContext2D, stroke: StudyRo
   context.lineWidth = stroke.width;
   context.strokeStyle = stroke.color;
   context.beginPath();
-  context.moveTo(stroke.points[0].x, stroke.points[0].y);
+  const firstPoint = toCanvasPoint(stroke.points[0], size);
+  context.moveTo(firstPoint.x, firstPoint.y);
 
   for (const point of stroke.points.slice(1)) {
-    context.lineTo(point.x, point.y);
+    const nextPoint = toCanvasPoint(point, size);
+    context.lineTo(nextPoint.x, nextPoint.y);
   }
 
   context.stroke();
   context.restore();
 }
 
-function redrawWhiteboardCanvas(canvas: HTMLCanvasElement, strokes: StudyRoomWhiteboardStroke[]) {
+function drawWhiteboardStrokeSegment(
+  context: CanvasRenderingContext2D,
+  fromPoint: { x: number; y: number },
+  toPoint: { x: number; y: number },
+  size: CanvasViewportSize,
+  color: string,
+  width: number
+) {
+  const start = toCanvasPoint(fromPoint, size);
+  const end = toCanvasPoint(toPoint, size);
+
+  context.save();
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.lineWidth = width;
+  context.strokeStyle = color;
+  context.beginPath();
+  context.moveTo(start.x, start.y);
+  context.lineTo(end.x, end.y);
+  context.stroke();
+  context.restore();
+}
+
+function redrawWhiteboardCanvas(
+  canvas: HTMLCanvasElement,
+  size: CanvasViewportSize,
+  strokes: StudyRoomWhiteboardStroke[],
+  transientStrokes: StudyRoomWhiteboardStroke[],
+  activeStroke: StudyRoomWhiteboardStroke | null
+) {
   const context = canvas.getContext("2d");
   if (!context) {
     return;
   }
 
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.clearRect(0, 0, size.width, size.height);
   for (const stroke of strokes) {
-    drawWhiteboardStroke(context, stroke);
+    drawWhiteboardStroke(context, stroke, size);
+  }
+  for (const stroke of transientStrokes) {
+    drawWhiteboardStroke(context, stroke, size);
+  }
+  if (activeStroke) {
+    drawWhiteboardStroke(context, activeStroke, size);
   }
 }
 
@@ -111,15 +235,7 @@ function normalizeRoom(room: StudyRoomPayload): StudyRoomPayload {
   return {
     ...room,
     timerStartedAt: room.timerStartedAt ? new Date(room.timerStartedAt).toISOString() : null,
-    whiteboardStrokes: (room.whiteboardStrokes ?? []).map((stroke) => ({
-      ...stroke,
-      authorUserId: String(stroke.authorUserId),
-      createdAt: stroke.createdAt ? new Date(stroke.createdAt).toISOString() : new Date().toISOString(),
-      points: stroke.points.map((point) => ({
-        x: Number(point.x),
-        y: Number(point.y)
-      }))
-    })),
+    whiteboardStrokes: (room.whiteboardStrokes ?? []).map((stroke) => normalizeWhiteboardStroke(stroke)),
     members: room.members.map((member) => ({
       ...member,
       joinedAt: member.joinedAt ? new Date(member.joinedAt).toISOString() : new Date().toISOString(),
@@ -170,9 +286,23 @@ export function StudyRoomPage() {
   const [roomActionLoading, setRoomActionLoading] = useState<"create" | "join" | null>(null);
   const [answerLoading, setAnswerLoading] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [canvasSize, setCanvasSize] = useState<CanvasViewportSize>({
+    width: LEGACY_WHITEBOARD_WIDTH,
+    height: LEGACY_WHITEBOARD_HEIGHT
+  });
+  const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasSizeRef = useRef<CanvasViewportSize>({
+    width: LEGACY_WHITEBOARD_WIDTH,
+    height: LEGACY_WHITEBOARD_HEIGHT
+  });
+  const roomRef = useRef<StudyRoomPayload | null>(null);
   const drawingRef = useRef(false);
-  const strokePointsRef = useRef<Array<{ x: number; y: number }>>([]);
+  const localActiveStrokeRef = useRef<StudyRoomWhiteboardStroke | null>(null);
+  const liveWhiteboardStrokesRef = useRef<Map<string, StudyRoomWhiteboardStroke>>(new Map());
+  const whiteboardFlushTimeoutRef = useRef<number | null>(null);
+  const whiteboardLastSentIndexRef = useRef(0);
+  const scrollLockRef = useRef<{ htmlOverflow: string; bodyOverflow: string } | null>(null);
   const autoJoinedCodeRef = useRef<string | null>(null);
 
   const currentUserId = session?.user?.id ?? "";
@@ -180,13 +310,86 @@ export function StudyRoomPage() {
   const requestedRoomCode = searchParams.get("roomCode")?.trim().toUpperCase() ?? "";
   const canManageRoom = Boolean(room && currentUserId && room.hostUserId === currentUserId);
 
-  useEffect(() => {
+  const redrawWhiteboard = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
     }
 
-    redrawWhiteboardCanvas(canvas, []);
+    redrawWhiteboardCanvas(
+      canvas,
+      canvasSizeRef.current,
+      roomRef.current?.whiteboardStrokes ?? [],
+      Array.from(liveWhiteboardStrokesRef.current.values()),
+      localActiveStrokeRef.current
+    );
+  }, []);
+
+  const clearWhiteboardFlushTimer = useCallback(() => {
+    if (whiteboardFlushTimeoutRef.current !== null) {
+      window.clearTimeout(whiteboardFlushTimeoutRef.current);
+      whiteboardFlushTimeoutRef.current = null;
+    }
+  }, []);
+
+  const lockScrollWhileDrawing = useCallback(() => {
+    if (scrollLockRef.current || typeof document === "undefined") {
+      return;
+    }
+
+    scrollLockRef.current = {
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyOverflow: document.body.style.overflow
+    };
+
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+  }, []);
+
+  const unlockScrollWhileDrawing = useCallback(() => {
+    if (!scrollLockRef.current || typeof document === "undefined") {
+      return;
+    }
+
+    document.documentElement.style.overflow = scrollLockRef.current.htmlOverflow;
+    document.body.style.overflow = scrollLockRef.current.bodyOverflow;
+    scrollLockRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    roomRef.current = room;
+  }, [room]);
+
+  useEffect(() => {
+    canvasSizeRef.current = canvasSize;
+  }, [canvasSize]);
+
+  useEffect(() => {
+    const container = canvasContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const updateCanvasSize = () => {
+      const rect = container.getBoundingClientRect();
+      const nextWidth = Math.max(1, Math.round(rect.width));
+      const nextHeight = Math.max(1, Math.round(rect.height));
+
+      setCanvasSize((previous) =>
+        previous.width === nextWidth && previous.height === nextHeight
+          ? previous
+          : { width: nextWidth, height: nextHeight }
+      );
+    };
+
+    updateCanvasSize();
+
+    const resizeObserver = new ResizeObserver(() => updateCanvasSize());
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [room?.roomCode]);
 
   useEffect(() => {
@@ -195,8 +398,31 @@ export function StudyRoomPage() {
       return;
     }
 
-    redrawWhiteboardCanvas(canvas, room?.whiteboardStrokes ?? []);
-  }, [room?.whiteboardStrokes]);
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(canvasSize.width * devicePixelRatio));
+    canvas.height = Math.max(1, Math.round(canvasSize.height * devicePixelRatio));
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return;
+    }
+
+    context.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    redrawWhiteboard();
+  }, [canvasSize, redrawWhiteboard, room?.roomCode]);
+
+  useEffect(() => {
+    liveWhiteboardStrokesRef.current.clear();
+    localActiveStrokeRef.current = null;
+    whiteboardLastSentIndexRef.current = 0;
+    clearWhiteboardFlushTimer();
+    unlockScrollWhileDrawing();
+    redrawWhiteboard();
+  }, [clearWhiteboardFlushTimer, redrawWhiteboard, room?.roomCode, unlockScrollWhileDrawing]);
+
+  useEffect(() => {
+    redrawWhiteboard();
+  }, [redrawWhiteboard, room?.whiteboardStrokes]);
 
   useEffect(() => {
     if (!room || room.timerPaused || !room.timerStartedAt) {
@@ -206,6 +432,17 @@ export function StudyRoomPage() {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, [room]);
+
+  useEffect(() => {
+    return () => {
+      clearWhiteboardFlushTimer();
+      unlockScrollWhileDrawing();
+    };
+  }, [clearWhiteboardFlushTimer, unlockScrollWhileDrawing]);
+
+  const roomBackgroundFetch = useCallback((input: RequestInfo | URL, init?: RequestInit) => {
+    return fetch(input, buildBackgroundRequestInit(init));
+  }, []);
 
   const joinRoom = useCallback(
     async (nextCode?: string, options?: JoinOptions) => {
@@ -273,12 +510,15 @@ export function StudyRoomPage() {
   }, [joinRoom, requestedRoomCode, room?.roomCode]);
 
   useEffect(() => {
-    if (!room || !realtimeReady || !publicRealtimeConfig) {
+    const roomCode = room?.roomCode;
+
+    if (!roomCode || !realtimeReady || !publicRealtimeConfig) {
       setRealtimeConnected(false);
       setRealtimeIssue(null);
       return;
     }
 
+    let cancelled = false;
     let pusherClient: {
       subscribe: (channel: string) => {
         bind: (eventName: string, callback: (payload: unknown) => void) => void;
@@ -287,10 +527,14 @@ export function StudyRoomPage() {
       unsubscribe: (channel: string) => void;
       disconnect: () => void;
     } | null = null;
-    const channelName = `presence-room-${room.roomCode}`;
+    const channelName = `presence-room-${roomCode}`;
 
     void import("pusher-js")
       .then(({ default: Pusher }) => {
+        if (cancelled) {
+          return;
+        }
+
         const client = new Pusher(publicRealtimeConfig.key, {
           cluster: publicRealtimeConfig.cluster,
           channelAuthorization: {
@@ -317,7 +561,7 @@ export function StudyRoomPage() {
                 : "Realtime sync could not authorize this room subscription.");
 
           console.error("Study room realtime subscription failed", {
-            roomCode: room.roomCode,
+            roomCode,
             status,
             type: error?.type,
             error: error?.error
@@ -417,24 +661,79 @@ export function StudyRoomPage() {
         });
 
         channel.bind("whiteboard-stroke", (payload: StudyRoomWhiteboardStroke) => {
-          const normalizedStroke: StudyRoomWhiteboardStroke = {
-            ...payload,
-            authorUserId: String(payload.authorUserId),
-            createdAt: payload.createdAt ? new Date(payload.createdAt).toISOString() : new Date().toISOString(),
-            points: (payload.points ?? []).map((point) => ({
-              x: Number(point.x),
-              y: Number(point.y)
-            }))
-          };
+          const normalizedStroke = normalizeWhiteboardStroke(payload);
+          liveWhiteboardStrokesRef.current.delete(normalizedStroke.strokeId);
+          if (localActiveStrokeRef.current?.strokeId === normalizedStroke.strokeId) {
+            localActiveStrokeRef.current = null;
+            whiteboardLastSentIndexRef.current = 0;
+          }
 
           setRoom((previous) =>
             previous
-              ? {
-                  ...previous,
-                  whiteboardStrokes: appendUniqueWhiteboardStroke(previous.whiteboardStrokes ?? [], normalizedStroke)
-                }
+              ? (() => {
+                  const next = {
+                    ...previous,
+                    whiteboardStrokes: appendUniqueWhiteboardStroke(previous.whiteboardStrokes ?? [], normalizedStroke)
+                  };
+                  roomRef.current = next;
+                  return next;
+                })()
               : previous
           );
+        });
+
+        channel.bind("whiteboard-segment", (payload: StudyRoomWhiteboardStroke) => {
+          const normalizedStroke = normalizeWhiteboardStroke(payload);
+
+          if (localActiveStrokeRef.current?.strokeId === normalizedStroke.strokeId) {
+            return;
+          }
+
+          const existingStroke = liveWhiteboardStrokesRef.current.get(normalizedStroke.strokeId);
+          liveWhiteboardStrokesRef.current.set(
+            normalizedStroke.strokeId,
+            existingStroke
+              ? {
+                  ...existingStroke,
+                  color: normalizedStroke.color,
+                  width: normalizedStroke.width,
+                  createdAt: normalizedStroke.createdAt,
+                  points: mergeWhiteboardPoints(existingStroke.points, normalizedStroke.points)
+                }
+              : normalizedStroke
+          );
+          redrawWhiteboard();
+        });
+
+        channel.bind("whiteboard-cleared", () => {
+          clearWhiteboardFlushTimer();
+          liveWhiteboardStrokesRef.current.clear();
+          localActiveStrokeRef.current = null;
+          whiteboardLastSentIndexRef.current = 0;
+          unlockScrollWhileDrawing();
+
+          const nextRoom = roomRef.current
+            ? {
+                ...roomRef.current,
+                whiteboardStrokes: []
+              }
+            : null;
+
+          if (nextRoom) {
+            roomRef.current = nextRoom;
+            setRoom(nextRoom);
+          } else {
+            setRoom((previous) =>
+              previous
+                ? {
+                    ...previous,
+                    whiteboardStrokes: []
+                  }
+                : previous
+            );
+          }
+
+          redrawWhiteboard();
         });
 
         pusherClient = client as unknown as typeof pusherClient;
@@ -446,6 +745,7 @@ export function StudyRoomPage() {
       });
 
     return () => {
+      cancelled = true;
       if (!pusherClient) {
         return;
       }
@@ -454,40 +754,91 @@ export function StudyRoomPage() {
       pusherClient.unsubscribe(channelName);
       pusherClient.disconnect();
     };
-  }, [publicRealtimeConfig, realtimeReady, room]);
+  }, [
+    clearWhiteboardFlushTimer,
+    publicRealtimeConfig,
+    realtimeReady,
+    redrawWhiteboard,
+    room?.roomCode,
+    unlockScrollWhileDrawing
+  ]);
 
   const syncWhiteboardStroke = useCallback(
-    async (stroke: StudyRoomWhiteboardStroke) => {
-      if (!room) {
+    async (
+      phase: WhiteboardSyncPhase,
+      stroke: StudyRoomWhiteboardStroke,
+      points: StudyRoomWhiteboardStroke["points"]
+    ) => {
+      const activeRoom = roomRef.current;
+      if (!activeRoom) {
         return;
       }
 
       try {
-        const response = await fetch(`/api/study-room/${room.roomCode}/whiteboard`, {
+        const response = await roomBackgroundFetch(`/api/study-room/${activeRoom.roomCode}/whiteboard`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             strokeId: stroke.strokeId,
+            phase,
             color: stroke.color,
             width: stroke.width,
-            points: stroke.points
+            points
           })
         });
-        const data = (await response.json().catch(() => ({}))) as { room?: StudyRoomPayload; error?: string };
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
 
         if (!response.ok) {
           throw new Error(data.error ?? "Could not sync whiteboard");
         }
-
-        if (!realtimeReady && data.room) {
-          setRoom(normalizeRoom(data.room));
-        }
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Could not sync whiteboard");
+        if (phase === "final") {
+          toast.error(error instanceof Error ? error.message : "Could not sync whiteboard");
+        } else {
+          console.warn("Study room whiteboard segment sync failed", error);
+        }
       }
     },
-    [realtimeReady, room]
+    [roomBackgroundFetch]
   );
+
+  const flushActiveWhiteboardSegment = useCallback(
+    async (force = false) => {
+      clearWhiteboardFlushTimer();
+
+      if (!realtimeReady) {
+        return;
+      }
+
+      const stroke = localActiveStrokeRef.current;
+      if (!stroke || stroke.points.length < 2) {
+        return;
+      }
+
+      const lastSentIndex = whiteboardLastSentIndexRef.current;
+      const unsentPoints = stroke.points.slice(lastSentIndex);
+      const minimumPointsToSend = lastSentIndex === 0 ? 2 : 1;
+
+      if (!unsentPoints.length || (!force && unsentPoints.length < minimumPointsToSend)) {
+        return;
+      }
+
+      whiteboardLastSentIndexRef.current = stroke.points.length;
+      await syncWhiteboardStroke("segment", stroke, unsentPoints);
+    },
+    [clearWhiteboardFlushTimer, realtimeReady, syncWhiteboardStroke]
+  );
+
+  const scheduleWhiteboardSegmentFlush = useCallback(() => {
+    if (!realtimeReady || whiteboardFlushTimeoutRef.current !== null) {
+      return;
+    }
+
+    whiteboardFlushTimeoutRef.current = window.setTimeout(() => {
+      whiteboardFlushTimeoutRef.current = null;
+      void flushActiveWhiteboardSegment();
+    }, WHITEBOARD_SYNC_INTERVAL_MS);
+  }, [flushActiveWhiteboardSegment, realtimeReady]);
 
   async function createRoom() {
     setRoomActionLoading("create");
@@ -516,7 +867,7 @@ export function StudyRoomPage() {
   async function updateTimer(action: "start" | "pause" | "reset") {
     if (!room) return;
 
-    const response = await fetch(`/api/study-room/${room.roomCode}/timer`, {
+    const response = await roomBackgroundFetch(`/api/study-room/${room.roomCode}/timer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, duration: room.timerDuration })
@@ -537,7 +888,7 @@ export function StudyRoomPage() {
   async function startQuizBattle() {
     if (!room) return;
 
-    const response = await fetch(`/api/study-room/${room.roomCode}/quiz-battle`, {
+    const response = await roomBackgroundFetch(`/api/study-room/${room.roomCode}/quiz-battle`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ topic: "Quick Revision", subject: room.subject || "General", numQuestions: 5 })
@@ -572,7 +923,7 @@ export function StudyRoomPage() {
     setAnswerLoading(true);
 
     try {
-      const response = await fetch(`/api/study-room/${room.roomCode}/quiz-battle/answer`, {
+      const response = await roomBackgroundFetch(`/api/study-room/${room.roomCode}/quiz-battle/answer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -618,7 +969,7 @@ export function StudyRoomPage() {
     const trimmedMessage = chatInput.trim();
 
     try {
-      const response = await fetch(`/api/study-room/${room.roomCode}/message`, {
+      const response = await roomBackgroundFetch(`/api/study-room/${room.roomCode}/message`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: trimmedMessage })
@@ -650,64 +1001,196 @@ export function StudyRoomPage() {
   function pointerPosition(event: React.PointerEvent<HTMLCanvasElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
+      x: clampUnitValue((event.clientX - rect.left) / Math.max(rect.width, 1)),
+      y: clampUnitValue((event.clientY - rect.top) / Math.max(rect.height, 1))
     };
   }
 
   function onPointerDown(event: React.PointerEvent<HTMLCanvasElement>) {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
-    const { x, y } = pointerPosition(event);
+    if (!room || (event.pointerType === "mouse" && event.button !== 0)) {
+      return;
+    }
+
+    const point = pointerPosition(event);
     drawingRef.current = true;
-    strokePointsRef.current = [{ x, y }];
-    context.beginPath();
-    context.moveTo(x, y);
+    whiteboardLastSentIndexRef.current = 0;
+    localActiveStrokeRef.current = {
+      strokeId: createWhiteboardStrokeId(),
+      authorUserId: currentUserId || "local",
+      color: DEFAULT_WHITEBOARD_COLOR,
+      width: DEFAULT_WHITEBOARD_WIDTH,
+      points: [point],
+      createdAt: new Date().toISOString()
+    };
+
+    clearWhiteboardFlushTimer();
+    lockScrollWhileDrawing();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    redrawWhiteboard();
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d");
-    if (!canvas || !context || !drawingRef.current) return;
-    const { x, y } = pointerPosition(event);
-    strokePointsRef.current.push({ x, y });
-    context.lineTo(x, y);
-    context.stroke();
+    const activeStroke = localActiveStrokeRef.current;
+    if (!canvas || !context || !drawingRef.current || !activeStroke) return;
+
+    const point = pointerPosition(event);
+    const previousPoint = activeStroke.points[activeStroke.points.length - 1];
+    if (pointsEqual(previousPoint, point)) {
+      return;
+    }
+
+    activeStroke.points.push(point);
+    event.preventDefault();
+    drawWhiteboardStrokeSegment(
+      context,
+      previousPoint,
+      point,
+      canvasSizeRef.current,
+      activeStroke.color,
+      activeStroke.width
+    );
+
+    const unsentCount = activeStroke.points.length - whiteboardLastSentIndexRef.current;
+    if (unsentCount >= WHITEBOARD_SYNC_BATCH_SIZE) {
+      void flushActiveWhiteboardSegment();
+      return;
+    }
+
+    scheduleWhiteboardSegmentFlush();
   }
 
-  function stopDrawing() {
-    if (!drawingRef.current) {
+  function stopDrawing(event?: React.PointerEvent<HTMLCanvasElement>) {
+    if (event && event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    if (!drawingRef.current && !localActiveStrokeRef.current) {
+      unlockScrollWhileDrawing();
       return;
     }
 
+    event?.preventDefault();
     drawingRef.current = false;
-    const points = strokePointsRef.current;
-    strokePointsRef.current = [];
+    unlockScrollWhileDrawing();
+    clearWhiteboardFlushTimer();
 
-    if (!room || points.length < 2) {
+    const activeStroke = localActiveStrokeRef.current;
+    if (!activeStroke || !room) {
+      localActiveStrokeRef.current = null;
+      redrawWhiteboard();
       return;
     }
 
-    const stroke: StudyRoomWhiteboardStroke = {
-      strokeId: createWhiteboardStrokeId(),
-      authorUserId: currentUserId || "local",
-      color: "#7B6CF6",
-      width: 3,
-      points,
-      createdAt: new Date().toISOString()
-    };
+    const finalizedStroke = normalizeWhiteboardStroke(activeStroke);
+
+    if (finalizedStroke.points.length < 2) {
+      localActiveStrokeRef.current = null;
+      whiteboardLastSentIndexRef.current = 0;
+      redrawWhiteboard();
+      return;
+    }
+
+    void flushActiveWhiteboardSegment(true);
+    whiteboardLastSentIndexRef.current = finalizedStroke.points.length;
+    localActiveStrokeRef.current = null;
+    liveWhiteboardStrokesRef.current.delete(finalizedStroke.strokeId);
 
     setRoom((previous) =>
       previous
-        ? {
-            ...previous,
-            whiteboardStrokes: appendUniqueWhiteboardStroke(previous.whiteboardStrokes ?? [], stroke)
-          }
+        ? (() => {
+            const next = {
+              ...previous,
+              whiteboardStrokes: appendUniqueWhiteboardStroke(previous.whiteboardStrokes ?? [], finalizedStroke)
+            };
+            roomRef.current = next;
+            return next;
+          })()
         : previous
     );
-    void syncWhiteboardStroke(stroke);
+
+    void syncWhiteboardStroke("final", finalizedStroke, finalizedStroke.points);
   }
+
+  const clearWhiteboard = useCallback(async () => {
+    if (!room || !canManageRoom) {
+      return;
+    }
+
+    const previousStrokes = room.whiteboardStrokes;
+    clearWhiteboardFlushTimer();
+    liveWhiteboardStrokesRef.current.clear();
+    localActiveStrokeRef.current = null;
+    whiteboardLastSentIndexRef.current = 0;
+    unlockScrollWhileDrawing();
+
+    const clearedRoom = roomRef.current
+      ? {
+          ...roomRef.current,
+          whiteboardStrokes: []
+        }
+      : null;
+
+    if (clearedRoom) {
+      roomRef.current = clearedRoom;
+      setRoom(clearedRoom);
+    } else {
+      setRoom((previous) =>
+        previous
+          ? {
+              ...previous,
+              whiteboardStrokes: []
+            }
+          : previous
+      );
+    }
+
+    redrawWhiteboard();
+
+    try {
+      const response = await roomBackgroundFetch(`/api/study-room/${room.roomCode}/whiteboard`, {
+        method: "DELETE"
+      });
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "Could not clear whiteboard");
+      }
+    } catch (error) {
+      const restoredRoom = roomRef.current
+        ? {
+            ...roomRef.current,
+            whiteboardStrokes: previousStrokes
+          }
+        : null;
+
+      if (restoredRoom) {
+        roomRef.current = restoredRoom;
+        setRoom(restoredRoom);
+      } else {
+        setRoom((previous) =>
+          previous
+            ? {
+                ...previous,
+                whiteboardStrokes: previousStrokes
+              }
+            : previous
+        );
+      }
+
+      redrawWhiteboard();
+      toast.error(error instanceof Error ? error.message : "Could not clear whiteboard");
+    }
+  }, [
+    canManageRoom,
+    clearWhiteboardFlushTimer,
+    redrawWhiteboard,
+    room,
+    roomBackgroundFetch,
+    unlockScrollWhileDrawing
+  ]);
 
   function exportWhiteboard() {
     const canvas = canvasRef.current;
@@ -719,6 +1202,12 @@ export function StudyRoomPage() {
   }
 
   function leaveRoom() {
+    clearWhiteboardFlushTimer();
+    liveWhiteboardStrokesRef.current.clear();
+    localActiveStrokeRef.current = null;
+    whiteboardLastSentIndexRef.current = 0;
+    unlockScrollWhileDrawing();
+    roomRef.current = null;
     setRoom(null);
     setRealtimeConnected(false);
     setRealtimeIssue(null);
@@ -826,7 +1315,7 @@ export function StudyRoomPage() {
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted-foreground)]">
               {realtimeReady
                 ? realtimeConnected
-                  ? "Members, messages, timer updates, and quiz battle events sync across everyone in the room."
+                  ? "Members, messages, timer updates, whiteboard strokes, and quiz battle events sync across everyone in the room."
                   : realtimeIssue ?? "Trying to connect live sync for this room."
                 : "Realtime sync is unavailable until Pusher environment variables are configured. The room still works locally on this device."}
             </p>
@@ -878,20 +1367,34 @@ export function StudyRoomPage() {
               <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Shared board</p>
               <p className="mt-2 font-headline text-[1.9rem] tracking-[-0.03em] text-[var(--foreground)]">Whiteboard</p>
             </div>
-            <Button variant="outline" onClick={exportWhiteboard}>
-              Export Whiteboard
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              {canManageRoom ? (
+                <Button variant="outline" onClick={() => void clearWhiteboard()}>
+                  Clear Board
+                </Button>
+              ) : null}
+              <Button variant="outline" onClick={exportWhiteboard}>
+                Export Whiteboard
+              </Button>
+            </div>
           </div>
-          <canvas
-            ref={canvasRef}
-            width={900}
-            height={560}
-            className="h-[320px] w-full rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:h-[420px] xl:h-[560px]"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={stopDrawing}
-            onPointerLeave={stopDrawing}
-          />
+          <p className="text-sm leading-6 text-[var(--muted-foreground)]">
+            Draw with your finger or cursor. The board now scales to each device and streams strokes live while you draw.
+          </p>
+          <div
+            ref={canvasContainerRef}
+            className="min-h-[280px] h-[52vh] max-h-[560px] overflow-hidden rounded-[24px] bg-white shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)] sm:h-[420px] xl:h-[560px]"
+          >
+            <canvas
+              ref={canvasRef}
+              className="h-full w-full touch-none select-none"
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={stopDrawing}
+              onPointerLeave={stopDrawing}
+              onPointerCancel={stopDrawing}
+            />
+          </div>
         </section>
 
         <div className="space-y-5">

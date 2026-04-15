@@ -11,18 +11,6 @@ const GenerationMetaSchema = new Schema(
   { _id: false }
 );
 
-const NoteVisualSchema = new Schema(
-  {
-    key: { type: String, required: true },
-    description: { type: String, required: true },
-    imageUrl: { type: String, required: true },
-    provider: { type: String, required: true },
-    model: { type: String, required: true },
-    generatedAt: { type: Date, required: true }
-  },
-  { _id: false }
-);
-
 const NoteSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -33,9 +21,6 @@ const NoteSchema = new Schema(
     content: { type: String, required: true },
     htmlContent: { type: String, required: true },
     generationMeta: { type: GenerationMetaSchema, default: null },
-    visuals: { type: [NoteVisualSchema], default: [] },
-    visualGenerationStatus: { type: String, enum: ["idle", "ready", "partial_error", "error"], default: "idle" },
-    visualGenerationError: { type: String, default: "" },
     isFavorite: { type: Boolean, default: false },
     tags: { type: [String], default: [] }
   },

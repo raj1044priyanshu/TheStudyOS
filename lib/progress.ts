@@ -1,5 +1,5 @@
 import { subDays } from "date-fns";
-import { hourInTimeZone, normalizeTimeZone } from "@/lib/timezone";
+import { dayKeyInTimeZone, hourInTimeZone, normalizeTimeZone, relativeDayKeyInTimeZone } from "@/lib/timezone";
 import { getActiveStudyStats } from "@/lib/study-time";
 import { AchievementModel } from "@/models/Achievement";
 import { ExamModel } from "@/models/Exam";
@@ -380,16 +380,19 @@ export async function logActivity(input: LogActivityInput): Promise<Gamification
 
   const previousLevel = user.level;
   const previousStreak = user.streak;
-  const lastActiveKey = user.lastActive ? utcDayKey(new Date(user.lastActive)) : null;
-  const todayKey = utcDayKey(now);
-  const yesterdayKey = utcDayKey(subDays(now, 1));
+
+  // Use the user's timezone for streak day comparisons instead of UTC
+  const timezone = normalizeTimeZone(user.timezone);
+  const todayKey = dayKeyInTimeZone(now, timezone);
+  const yesterdayKey = relativeDayKeyInTimeZone(now, -1, timezone);
+  const lastActiveKey = user.lastActive ? dayKeyInTimeZone(new Date(user.lastActive), timezone) : null;
 
   let streakBroken: GamificationEvent["streakBroken"] = { happened: false, previous: 0, at: null };
 
   if (!lastActiveKey) {
     user.streak = 1;
   } else if (lastActiveKey === todayKey) {
-    user.streak = Math.max(1, user.streak);
+    // Same day — keep current streak (don't reset to 1 if already higher)
   } else if (lastActiveKey === yesterdayKey) {
     user.streak += 1;
   } else {
@@ -405,7 +408,6 @@ export async function logActivity(input: LogActivityInput): Promise<Gamification
   user.streakLastActivityAt = now;
   user.streakBreakPending = false;
 
-  const timezone = normalizeTimeZone(user.timezone);
   const localHour = hourInTimeZone(now, timezone);
   const usedFeatures = new Set(user.usedFeatures ?? []);
 

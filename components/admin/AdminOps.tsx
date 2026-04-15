@@ -17,16 +17,6 @@ interface HealthPayload {
       ready: boolean;
       fingerprint: string;
       textModel: string;
-      imageModel: string;
-      validationStatus: string;
-      validationMessage: string;
-    };
-    image: {
-      source: string;
-      provider: string;
-      ready: boolean;
-      fingerprint: string;
-      imageModel: string;
       validationStatus: string;
       validationMessage: string;
     };
@@ -58,7 +48,6 @@ interface AiConfigPayload {
       keyFingerprint: string;
       textModel: string;
       multimodalModel: string;
-      imageModel: string;
       lastValidatedAt: string | null;
       lastValidationStatus: string;
       lastValidationMessage: string;
@@ -71,20 +60,6 @@ interface AiConfigPayload {
       keyFingerprint: string;
       textModel: string;
       multimodalModel: string;
-      imageModel: string;
-      lastValidatedAt: string | null;
-      lastValidationStatus: string;
-      lastValidationMessage: string;
-    };
-    image: {
-      source: string;
-      provider: string;
-      apiBase: string;
-      apiKeyPresent: boolean;
-      keyFingerprint: string;
-      textModel: string;
-      multimodalModel: string;
-      imageModel: string;
       lastValidatedAt: string | null;
       lastValidationStatus: string;
       lastValidationMessage: string;
@@ -145,7 +120,6 @@ interface ProviderFormState {
   apiBase: string;
   textModel: string;
   multimodalModel: string;
-  imageModel: string;
   apiKey: string;
   resetToEnv: boolean;
 }
@@ -154,7 +128,6 @@ const EMPTY_PROVIDER_FORM: ProviderFormState = {
   apiBase: "",
   textModel: "",
   multimodalModel: "",
-  imageModel: "",
   apiKey: "",
   resetToEnv: false
 };
@@ -173,7 +146,6 @@ export function AdminOps() {
   const [aiUsage, setAiUsage] = useState<AiUsagePayload | null>(null);
   const [primaryForm, setPrimaryForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
   const [fallbackForm, setFallbackForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
-  const [imageForm, setImageForm] = useState<ProviderFormState>(EMPTY_PROVIDER_FORM);
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -201,7 +173,6 @@ export function AdminOps() {
         apiBase: aiConfigPayload.config.primary.apiBase || "",
         textModel: aiConfigPayload.config.primary.textModel || "",
         multimodalModel: aiConfigPayload.config.primary.multimodalModel || "",
-        imageModel: aiConfigPayload.config.primary.imageModel || "",
         apiKey: "",
         resetToEnv: false
       });
@@ -209,15 +180,6 @@ export function AdminOps() {
         apiBase: aiConfigPayload.config.fallback.apiBase || "",
         textModel: aiConfigPayload.config.fallback.textModel || "",
         multimodalModel: aiConfigPayload.config.fallback.multimodalModel || "",
-        imageModel: aiConfigPayload.config.fallback.imageModel || "",
-        apiKey: "",
-        resetToEnv: false
-      });
-      setImageForm({
-        apiBase: aiConfigPayload.config.image.apiBase || "",
-        textModel: aiConfigPayload.config.image.textModel || "",
-        multimodalModel: aiConfigPayload.config.image.multimodalModel || "",
-        imageModel: aiConfigPayload.config.image.imageModel || "",
         apiKey: "",
         resetToEnv: false
       });
@@ -245,16 +207,11 @@ export function AdminOps() {
     const primaryPatch: Record<string, unknown> = {
       apiBase: primaryForm.apiBase,
       textModel: primaryForm.textModel,
-      multimodalModel: primaryForm.multimodalModel,
-      imageModel: primaryForm.imageModel
+      multimodalModel: primaryForm.multimodalModel
     };
     const fallbackPatch: Record<string, unknown> = {
       apiBase: fallbackForm.apiBase,
       textModel: fallbackForm.textModel
-    };
-    const imagePatch: Record<string, unknown> = {
-      apiBase: imageForm.apiBase,
-      imageModel: imageForm.imageModel
     };
 
     if (primaryForm.apiKey.trim()) {
@@ -269,12 +226,6 @@ export function AdminOps() {
     if (fallbackForm.resetToEnv) {
       fallbackPatch.resetToEnv = true;
     }
-    if (imageForm.apiKey.trim()) {
-      imagePatch.apiKey = imageForm.apiKey.trim();
-    }
-    if (imageForm.resetToEnv) {
-      imagePatch.resetToEnv = true;
-    }
 
     setSaving(true);
     const response = await fetch("/api/admin/ai-config", {
@@ -284,8 +235,7 @@ export function AdminOps() {
       },
       body: JSON.stringify({
         primary: primaryPatch,
-        fallback: fallbackPatch,
-        image: imagePatch
+        fallback: fallbackPatch
       })
     });
 
@@ -326,7 +276,7 @@ export function AdminOps() {
       <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <AdminStatCard label="Database" value={health.database.ok ? "Healthy" : "Offline"} helper={`Ready state: ${health.database.readyState}`} />
         <AdminStatCard label="Email" value={health.email.ok ? "Healthy" : "Blocked"} helper={health.email.provider.toUpperCase()} />
-        <AdminStatCard label="Cloudinary" value={health.cloudinary.ok ? "Ready" : "Missing"} helper="Image uploads for note visuals." />
+        <AdminStatCard label="Cloudinary" value={health.cloudinary.ok ? "Ready" : "Missing"} helper="Media uploads for scans and files." />
         <AdminStatCard label="AI requests" value={aiUsage.summary.requests} helper="Last 7 days" />
         <AdminStatCard label="AI tokens" value={aiUsage.summary.totalTokens} helper="Last 7 days" />
         <AdminStatCard label="Quota reset" value={formatCountdown(aiUsage.dailyQuotaResetAt)} helper="Approx. to next Pacific midnight" />
@@ -353,24 +303,14 @@ export function AdminOps() {
             <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">{configStatusCopy}</p>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-2">
             <div className="surface-card rounded-[22px] p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Google primary</p>
               <p className="mt-3 text-sm text-[var(--foreground)]">Source: {aiConfig.primary.source}</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">Fingerprint: {aiConfig.primary.keyFingerprint || "missing"}</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">Text model: {aiConfig.primary.textModel}</p>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">Image model: {aiConfig.primary.imageModel}</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">
                 Validation: {aiConfig.primary.lastValidationStatus} {aiConfig.primary.lastValidationMessage ? `• ${aiConfig.primary.lastValidationMessage}` : ""}
-              </p>
-            </div>
-            <div className="surface-card rounded-[22px] p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">NVIDIA image</p>
-              <p className="mt-3 text-sm text-[var(--foreground)]">Source: {aiConfig.image.source}</p>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">Fingerprint: {aiConfig.image.keyFingerprint || "missing"}</p>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">Image model: {aiConfig.image.imageModel}</p>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                Validation: {aiConfig.image.lastValidationStatus} {aiConfig.image.lastValidationMessage ? `• ${aiConfig.image.lastValidationMessage}` : ""}
               </p>
             </div>
             <div className="surface-card rounded-[22px] p-4">
@@ -384,7 +324,7 @@ export function AdminOps() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-3">
               <h3 className="font-headline text-2xl tracking-[-0.03em] text-[var(--foreground)]">Update Google config</h3>
               <Input value={primaryForm.apiBase} onChange={(event) => setPrimaryForm((current) => ({ ...current, apiBase: event.target.value }))} placeholder="API base" />
@@ -394,7 +334,6 @@ export function AdminOps() {
                 onChange={(event) => setPrimaryForm((current) => ({ ...current, multimodalModel: event.target.value }))}
                 placeholder="Multimodal model"
               />
-              <Input value={primaryForm.imageModel} onChange={(event) => setPrimaryForm((current) => ({ ...current, imageModel: event.target.value }))} placeholder="Image model" />
               <Input value={primaryForm.apiKey} onChange={(event) => setPrimaryForm((current) => ({ ...current, apiKey: event.target.value }))} placeholder="New Google API key (optional)" />
               <label className="flex items-center gap-3 text-sm text-[var(--foreground)]">
                 <input
@@ -404,24 +343,6 @@ export function AdminOps() {
                 />
                 Reset stored Google key and use env fallback
               </label>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="font-headline text-2xl tracking-[-0.03em] text-[var(--foreground)]">Update NVIDIA image config</h3>
-              <Input value={imageForm.apiBase} onChange={(event) => setImageForm((current) => ({ ...current, apiBase: event.target.value }))} placeholder="API base" />
-              <Input value={imageForm.imageModel} onChange={(event) => setImageForm((current) => ({ ...current, imageModel: event.target.value }))} placeholder="Image model" />
-              <Input value={imageForm.apiKey} onChange={(event) => setImageForm((current) => ({ ...current, apiKey: event.target.value }))} placeholder="New NVIDIA API key (optional)" />
-              <label className="flex items-center gap-3 text-sm text-[var(--foreground)]">
-                <input
-                  type="checkbox"
-                  checked={imageForm.resetToEnv}
-                  onChange={(event) => setImageForm((current) => ({ ...current, resetToEnv: event.target.checked }))}
-                />
-                Reset stored NVIDIA key and use env fallback
-              </label>
-              <p className="text-xs leading-5 text-[var(--muted-foreground)]">
-                NVIDIA hosted image endpoints are great for prototyping, but they still run with trial or credit limits. Keep an eye on recent image failures.
-              </p>
             </div>
 
             <div className="space-y-3">
@@ -445,10 +366,10 @@ export function AdminOps() {
         <AdminCard className="space-y-4">
           <div>
             <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Usage ledger</p>
-            <h2 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Requests, tokens, and image generation</h2>
+            <h2 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Requests, tokens, and reliability</h2>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div className="surface-card rounded-[22px] p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Requests</p>
               <p className="mt-3 font-headline text-3xl text-[var(--foreground)]">{aiUsage.summary.requests}</p>
@@ -458,11 +379,6 @@ export function AdminOps() {
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Tokens</p>
               <p className="mt-3 font-headline text-3xl text-[var(--foreground)]">{aiUsage.summary.totalTokens}</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">{aiUsage.last24h.totalTokens} in the last 24h</p>
-            </div>
-            <div className="surface-card rounded-[22px] p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Images</p>
-              <p className="mt-3 font-headline text-3xl text-[var(--foreground)]">{aiUsage.summary.imageGenerations}</p>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">{aiUsage.last24h.imageGenerations} in the last 24h</p>
             </div>
             <div className="surface-card rounded-[22px] p-4">
               <p className="text-xs uppercase tracking-[0.14em] text-[var(--tertiary-foreground)]">Error rate</p>
@@ -484,7 +400,7 @@ export function AdminOps() {
           </div>
 
           <p className="text-sm leading-6 text-[var(--muted-foreground)]">
-            Google does not expose a single fixed free-tier expiry date here, and NVIDIA trial-style image access can also be rate-limited. This dashboard shows app-side usage and the next daily reset window, while provider dashboards remain the source of truth for active quotas and credits.
+            This dashboard shows app-side usage and the next daily reset window, while provider dashboards remain the source of truth for active quotas and credits.
           </p>
 
           <div className="grid gap-4 lg:grid-cols-2">
@@ -497,7 +413,7 @@ export function AdminOps() {
                     <span className="text-xs text-[var(--muted-foreground)]">{item.errorRate}% errors</span>
                   </div>
                   <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                    {item.requests} requests • {item.tokens} tokens • {item.images} images
+                    {item.requests} requests • {item.tokens} tokens
                   </p>
                 </div>
               ))}
@@ -564,24 +480,24 @@ export function AdminOps() {
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <AdminCard>
           <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--tertiary-foreground)]">Provider health</p>
-          <h2 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Image-generation readiness</h2>
+          <h2 className="mt-2 font-headline text-3xl tracking-[-0.03em] text-[var(--foreground)]">Text + media readiness</h2>
           <div className="mt-5 space-y-3">
             <div className="surface-card rounded-[22px] p-4">
-              <p className="font-medium text-[var(--foreground)]">NVIDIA image generation</p>
-              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                {health.ai.image.validationMessage || "Validation message unavailable."}
-              </p>
-            </div>
-            <div className="surface-card rounded-[22px] p-4">
-              <p className="font-medium text-[var(--foreground)]">Google image generation</p>
+              <p className="font-medium text-[var(--foreground)]">Google primary validation</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">
                 {health.ai.primary.validationMessage || "Validation message unavailable."}
               </p>
             </div>
             <div className="surface-card rounded-[22px] p-4">
+              <p className="font-medium text-[var(--foreground)]">Groq fallback validation</p>
+              <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+                {health.ai.fallback.validationMessage || "Validation message unavailable."}
+              </p>
+            </div>
+            <div className="surface-card rounded-[22px] p-4">
               <p className="font-medium text-[var(--foreground)]">Cloudinary upload path</p>
               <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                {health.cloudinary.ok ? "Cloudinary is configured for note visual uploads." : "Cloudinary is missing, so generated note visuals cannot be saved."}
+                {health.cloudinary.ok ? "Cloudinary is configured for scan and file uploads." : "Cloudinary is missing, so scan and file uploads may fail."}
               </p>
             </div>
           </div>

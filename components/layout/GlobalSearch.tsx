@@ -109,7 +109,7 @@ export function GlobalSearch({ className, inputClassName }: Props) {
       <IconSearch className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[var(--tertiary-foreground)]" />
       <Input
         data-tour-id="dashboard-search"
-        placeholder="Search notes, quizzes, planner..."
+        placeholder="Find notes, quizzes, exams, profile, and more"
         className={inputClassName ?? "min-h-11 rounded-full pl-11"}
         value={query}
         aria-expanded={open}
@@ -136,7 +136,7 @@ export function GlobalSearch({ className, inputClassName }: Props) {
           <div className="flex items-start justify-between gap-3 px-2 pb-2 pt-1">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-700)]">Global search</p>
-              <p className="text-sm text-[var(--muted-foreground)]">Find notes, quizzes, revisions, exams, and shortcuts from one place.</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Find notes, quizzes, revisions, exams, profile, and shortcuts from one place.</p>
             </div>
             <CompanionBadge pose="thinking" size={54} className="shrink-0" />
           </div>

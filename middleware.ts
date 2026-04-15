@@ -39,6 +39,7 @@ export function middleware(request: NextRequest) {
   response.headers.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
   response.headers.set("Cross-Origin-Resource-Policy", "same-site");
   response.headers.set("Origin-Agent-Cluster", "?1");
+  response.headers.set("X-DNS-Prefetch-Control", "off");
 
   if (!isDevelopment && request.nextUrl.protocol === "https:") {
     response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
